@@ -55,7 +55,7 @@ const WorkspaceScreen = () => {
     },
     editor,
     workspaceActions: { toggleCollapse, setDebugForcedVariables, toggleDebugExpandedNode },
-    deviceActions: { setAvailableOptions },
+    deviceActions: { setAvailableOptions, setDeviceBoard },
     searchResults,
     project: {
       data: { pous },
@@ -1515,6 +1515,12 @@ const WorkspaceScreen = () => {
     const getAvailableBoardOptions = async () => {
       const boards = await window.bridge.getAvailableBoards()
       setAvailableOptions({ availableBoards: boards })
+      // If current deviceBoard is not in available boards, set to first available
+      const currentDeviceBoard = useOpenPLCStore.getState().deviceDefinitions.configuration.deviceBoard
+      if (boards.size > 0 && !boards.has(currentDeviceBoard)) {
+        const firstBoard = Array.from(boards.keys())[0]
+        setDeviceBoard(firstBoard)
+      }
     }
     void getAvailableBoardOptions()
   }, [])
