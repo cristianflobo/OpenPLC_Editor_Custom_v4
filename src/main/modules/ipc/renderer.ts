@@ -217,12 +217,12 @@ const rendererProcessBridge = {
           Bluetooth: string
           Ethernet: string
         }
-        isCoreInstalled: boolean
+        coreVersion?: string
         pins: {
-          defaultAin?: string[]
-          defaultAout?: string[]
-          defaultDin?: string[]
-          defaultDout?: string[]
+          defaultAin?: Record<string, string>
+          defaultAout?: Record<string, string>
+          defaultDin?: Record<string, string>
+          defaultDout?: Record<string, string>
         }
       }
     >

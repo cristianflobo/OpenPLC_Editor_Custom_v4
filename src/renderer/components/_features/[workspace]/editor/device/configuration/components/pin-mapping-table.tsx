@@ -12,7 +12,7 @@ const columnHelper = createColumnHelper<DevicePin>()
 
 const columns = [
   columnHelper.accessor('pin', {
-    header: 'Pin',
+    header: 'I/O',
     cell: PinComboboxInputCell,
   }),
   columnHelper.accessor('pinType', {

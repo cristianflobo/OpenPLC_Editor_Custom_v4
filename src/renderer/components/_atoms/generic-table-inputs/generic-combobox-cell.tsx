@@ -108,6 +108,12 @@ export const GenericComboboxCell = ({
     [selectValues],
   )
 
+  const displayText = useMemo(() => {
+    const flatOptions = flattenOptions(selectValues)
+    const selectedOption = flatOptions.find((option) => option.value === value)
+    return selectedOption?.label || selectedOption?.value || value || ''
+  }, [value, selectValues, flattenOptions])
+
   // Helper to filter options/groups recursively (moved out for reuse)
   const filterOptions = (
     options: Array<SelectOption | SelectGroup>,
@@ -206,7 +212,7 @@ export const GenericComboboxCell = ({
           { 'pointer-events-none': !selected },
         )}
       >
-        {value || ''}
+        {displayText}
       </PrimitiveDropdown.Trigger>
       <PrimitiveDropdown.Content
         sideOffset={12}

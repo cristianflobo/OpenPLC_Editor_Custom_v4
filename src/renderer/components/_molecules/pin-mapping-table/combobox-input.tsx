@@ -37,38 +37,75 @@ export const PinComboboxInputCell = ({
   }
 
   const selectableValues = useCallback(() => {
-    const transformPins = (pins: string[]) =>
+    const transformPins = (pins: string[], labels: Record<string, string>) =>
       pins.map((pin) => ({
         id: `${id}-${pin}`,
         value: pin,
-        label: pin,
+        label: labels[pin] || pin,
       }))
 
-    const defaultAinPins = availableBoards.get(selectedDeviceBoard)?.pins?.defaultAin || []
-    const defaultAoutPins = availableBoards.get(selectedDeviceBoard)?.pins?.defaultAout || []
-    const defaultDinPins = availableBoards.get(selectedDeviceBoard)?.pins?.defaultDin || []
-    const defaultDoutPins = availableBoards.get(selectedDeviceBoard)?.pins?.defaultDout || []
+    const boardInfo = availableBoards.get(selectedDeviceBoard)
+    const currentPinType = table.options.data[index]?.pinType
 
-    return [
-      ...transformPins(defaultAinPins),
-      ...transformPins(defaultAoutPins),
-      ...transformPins(defaultDinPins),
-      ...transformPins(defaultDoutPins),
-    ]
-      .filter((pin) => !existingPins.some((existingPin) => existingPin.pin === pin.value))
-      .sort((a, b) => {
-        const isALetter = /^[A-Za-z]/.test(a.value)
-        const isBLetter = /^[A-Za-z]/.test(b.value)
-        if (isALetter && !isBLetter) return -1
-        if (!isALetter && isBLetter) return 1
-        if (!isALetter && !isBLetter) {
-          // Both are numbers, sort numerically
-          return parseInt(a.value, 10) - parseInt(b.value, 10)
-        }
-        // Both are letter-prefixed, sort alphabetically
-        return a.value.localeCompare(b.value)
-      })
-  }, [id, selectedDeviceBoard, availableBoards, existingPins])
+    let pinsToShow: string[] = []
+    let ioLabels: Record<string, string> = {}
+
+    // Always include all labels for display
+    ioLabels = {
+      ...(boardInfo?.pins?.defaultAin || {}),
+      ...(boardInfo?.pins?.defaultAout || {}),
+      ...(boardInfo?.pins?.defaultDin || {}),
+      ...(boardInfo?.pins?.defaultDout || {}),
+    }
+
+    if (currentPinType === 'digitalInput') {
+      pinsToShow = Object.keys(boardInfo?.pins?.defaultDin || {})
+    } else if (currentPinType === 'analogInput') {
+      pinsToShow = Object.keys(boardInfo?.pins?.defaultAin || {})
+    } else if (currentPinType === 'digitalOutput') {
+      pinsToShow = Object.keys(boardInfo?.pins?.defaultDout || {})
+    } else if (currentPinType === 'analogOutput') {
+      pinsToShow = Object.keys(boardInfo?.pins?.defaultAout || {})
+    } else {
+      // If no type selected, show all
+      const defaultAinPins = Object.keys(boardInfo?.pins?.defaultAin || {})
+      const defaultAoutPins = Object.keys(boardInfo?.pins?.defaultAout || {})
+      const defaultDinPins = Object.keys(boardInfo?.pins?.defaultDin || {})
+      const defaultDoutPins = Object.keys(boardInfo?.pins?.defaultDout || {})
+      pinsToShow = [...defaultAinPins, ...defaultAoutPins, ...defaultDinPins, ...defaultDoutPins]
+    }
+
+    const currentValue = getValue<string>()
+
+    let options = transformPins(pinsToShow, ioLabels).filter(
+      (pin) => !existingPins.some((existingPin) => existingPin.pin === pin.value),
+    )
+
+    // If the current value is not in options but has a label, add it
+    if (currentValue && ioLabels[currentValue] && !options.some((opt) => opt.value === currentValue)) {
+      options = [
+        ...options,
+        {
+          id: `current-${currentValue}`,
+          value: currentValue,
+          label: ioLabels[currentValue],
+        },
+      ]
+    }
+
+    return options.sort((a, b) => {
+      const isALetter = /^[A-Za-z]/.test(a.label)
+      const isBLetter = /^[A-Za-z]/.test(b.label)
+      if (isALetter && !isBLetter) return -1
+      if (!isALetter && isBLetter) return 1
+      if (!isALetter && !isBLetter) {
+        // Both are numbers, sort numerically
+        return parseInt(a.label, 10) - parseInt(b.label, 10)
+      }
+      // Both are letter-prefixed, sort alphabetically
+      return a.label.localeCompare(b.label)
+    })
+  }, [id, selectedDeviceBoard, availableBoards, existingPins, table.options.data, index])
 
   // If the initialValue is changed external, sync it up with our state
   useEffect(() => {

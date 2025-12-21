@@ -77,10 +77,10 @@ const availableBoardInfo = z.object({
   }),
   coreVersion: z.string().optional(),
   pins: z.object({
-    defaultAin: z.array(z.string()).optional(), // Default analog input pins
-    defaultAout: z.array(z.string()).optional(), // Default analog output pins
-    defaultDin: z.array(z.string()).optional(), // Default digital input pins
-    defaultDout: z.array(z.string()).optional(), // Default digital output pins
+    defaultAin: z.record(z.string(), z.string()).optional(), // Default analog input pins
+    defaultAout: z.record(z.string(), z.string()).optional(), // Default analog output pins
+    defaultDin: z.record(z.string(), z.string()).optional(), // Default digital input pins
+    defaultDout: z.record(z.string(), z.string()).optional(), // Default digital output pins
   }),
 })
 

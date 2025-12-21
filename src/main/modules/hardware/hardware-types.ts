@@ -13,10 +13,10 @@ const BoardInfoSchema = z.object({
   core: z.string(),
   c_flags: z.array(z.string()).optional(),
   cxx_flags: z.array(z.string()).optional(),
-  default_ain: z.string(),
-  default_aout: z.string(),
-  default_din: z.string(),
-  default_dout: z.string(),
+  default_ain: z.record(z.string(), z.string()),
+  default_aout: z.record(z.string(), z.string()),
+  default_din: z.record(z.string(), z.string()),
+  default_dout: z.record(z.string(), z.string()),
   define: z.string().or(z.array(z.string())).optional(),
   extra_libraries: z.array(z.string()).optional(),
   platform: z.string(),
@@ -50,10 +50,10 @@ const availableBoardsSchema = z.map(
   z.object({
     coreVersion: z.string().optional(),
     pins: z.object({
-      defaultAin: z.array(z.string()).optional(),
-      defaultAout: z.array(z.string()).optional(),
-      defaultDin: z.array(z.string()).optional(),
-      defaultDout: z.array(z.string()).optional(),
+      defaultAin: z.record(z.string(), z.string()).optional(),
+      defaultAout: z.record(z.string(), z.string()).optional(),
+      defaultDin: z.record(z.string(), z.string()).optional(),
+      defaultDout: z.record(z.string(), z.string()).optional(),
     }),
     ...BoardInfoSchema.pick({ compiler: true, core: true, preview: true, specs: true }),
   }),
@@ -81,10 +81,10 @@ type AvailableBoards = Map<
     // Optional properties
     coreVersion?: string
     pins: {
-      defaultAin?: string[]
-      defaultAout?: string[]
-      defaultDin?: string[]
-      defaultDout?: string[]
+      defaultAin?: Record<string, string>
+      defaultAout?: Record<string, string>
+      defaultDin?: Record<string, string>
+      defaultDout?: Record<string, string>
     }
   }
 >

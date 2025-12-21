@@ -158,26 +158,10 @@ class HardwareModule {
           specs: boardData.specs,
           coreVersion: coreVersion ?? undefined,
           pins: {
-            defaultAin:
-              boardData.default_ain
-                ?.split(',')
-                .map((pin) => pin.trim())
-                .filter(Boolean) ?? [],
-            defaultAout:
-              boardData.default_aout
-                ?.split(',')
-                .map((pin) => pin.trim())
-                .filter(Boolean) ?? [],
-            defaultDin:
-              boardData.default_din
-                ?.split(',')
-                .map((pin) => pin.trim())
-                .filter(Boolean) ?? [],
-            defaultDout:
-              boardData.default_dout
-                ?.split(',')
-                .map((pin) => pin.trim())
-                .filter(Boolean) ?? [],
+            defaultAin: boardData.default_ain ?? {},
+            defaultAout: boardData.default_aout ?? {},
+            defaultDin: boardData.default_din ?? {},
+            defaultDout: boardData.default_dout ?? {},
           },
         })
       })
