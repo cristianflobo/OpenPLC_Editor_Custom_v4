@@ -14,16 +14,6 @@ Analog In: A0                               (%IW0)
 Analog Out: 8                               (%QW0)
 **************************************************************/
 
-#define NODE_PIN_D0		16
-#define NODE_PIN_D1		5
-#define NODE_PIN_D2		4
-#define NODE_PIN_D3		0
-#define NODE_PIN_D4		2
-#define NODE_PIN_D5		14
-#define NODE_PIN_D6		12
-#define NODE_PIN_D7		13
-#define NODE_PIN_D8		15
-
 // NOTE: PWM channel == pin number
 
 // Create the I/O pin masks (defined within editor GUI when compiling for board)

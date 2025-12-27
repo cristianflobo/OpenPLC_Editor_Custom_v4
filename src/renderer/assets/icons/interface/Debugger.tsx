@@ -25,7 +25,7 @@ export const DebuggerIcon = ({ className, variant = 'default', size = 'sm', ...r
       className={cn(`${SizeClasses[size]}`, className)}
       {...res}
     >
-      <title>Debugger Icon</title>
+      <title>Debugger</title>
       <path
         fillRule='evenodd'
         clipRule='evenodd'

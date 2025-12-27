@@ -25,5 +25,31 @@
       "Bluetooth": "No",
       "Ethernet": "No"
     }
+  },
+  "FLOBO ES82-4D4R": {
+    "board_manager_url": "https://arduino.esp8266.com/stable/package_esp8266com_index.json",
+    "compiler": "arduino-cli",
+    "core": "esp8266:esp8266",
+    "c_flags": ["-MMD", "-c", "-Wno-incompatible-pointer-types"],
+    "default_ain": {},
+    "default_aout":{ },
+    "default_din": { },
+    "default_dout": {"12":"Q1" },
+    "define": "BOARD_ESP8266",
+    "extra_libraries": [],
+    "platform": "esp8266:esp8266:nodemcuv2",
+    "preview": "generic.jpg",
+    "source": "esp8266.cpp",
+    "specs": {
+      "CPU": "FLOBO ES82-4D4R",
+      "RAM": "80 KB",
+      "Flash": "4 MB",
+      "Digital Pins": "16",
+      "Analog Pins": "1",
+      "PWM Pins": "16",
+      "WiFi": "Yes",
+      "Bluetooth": "No",
+      "Ethernet": "No"
+    }
   }
 }

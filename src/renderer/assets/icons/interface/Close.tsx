@@ -20,6 +20,7 @@ const CloseFilledIcon = ({ className, ...rest }: ComponentPropsWithoutRef<'svg'>
       xmlns='http://www.w3.org/2000/svg'
       {...rest}
     >
+      <title>Delete Element</title>
       <path
         opacity='0.5'
         d='M6.99998 2.33331H21C23.5773 2.33331 25.6666 4.42265 25.6666 6.99998V21C25.6666 23.5773 23.5773 25.6667 21 25.6667H6.99998C4.42265 25.6667 2.33331 23.5773 2.33331 21V6.99998C2.33331 4.42265 4.42265 2.33331 6.99998 2.33331Z'

@@ -10,7 +10,7 @@ const sizeClasses = {
 }
 
 export default function CoilIcon(props: ICoilIconProps) {
-  const { className, size = 'sm', ...res } = props
+  const { className, size = 'md', ...res } = props
 
   return (
     <svg
@@ -20,6 +20,7 @@ export default function CoilIcon(props: ICoilIconProps) {
       xmlns='http://www.w3.org/2000/svg'
       {...res}
     >
+      <title>Coil</title>
       <path
         opacity='0.4'
         d='M4.66667 0H18.6667C21.244 0 23.3333 2.08934 23.3333 4.66667V18.6667C23.3333 21.244 21.244 23.3333 18.6667 23.3333H4.66667C2.08934 23.3333 0 21.244 0 18.6667V4.66667C0 2.08934 2.08934 0 4.66667 0Z'

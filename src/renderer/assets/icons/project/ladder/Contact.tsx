@@ -10,7 +10,7 @@ const sizeClasses = {
 }
 
 export default function ContactIcon(props: IContactIconProps) {
-  const { className, size = 'sm', ...res } = props
+  const { className, size = 'md', ...res } = props
 
   return (
     <svg
@@ -20,6 +20,7 @@ export default function ContactIcon(props: IContactIconProps) {
       xmlns='http://www.w3.org/2000/svg'
       {...res}
     >
+      <title>Contact</title>
       <path
         opacity='0.4'
         d='M5.00065 0.333984H19.0007C21.578 0.333984 23.6673 2.42332 23.6673 5.00065V19.0007C23.6673 21.578 21.578 23.6673 19.0007 23.6673H5.00065C2.42332 23.6673 0.333984 21.578 0.333984 19.0007V5.00065C0.333984 2.42332 2.42332 0.333984 5.00065 0.333984Z'

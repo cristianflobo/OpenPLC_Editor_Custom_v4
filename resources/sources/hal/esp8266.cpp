@@ -14,16 +14,6 @@ Analog In: A0                               (%IW0)
 Analog Out: 8                               (%QW0)
 **************************************************************/
 
-#define NODE_PIN_D0		16
-#define NODE_PIN_D1		5
-#define NODE_PIN_D2		4
-#define NODE_PIN_D3		0
-#define NODE_PIN_D4		2
-#define NODE_PIN_D5		14
-#define NODE_PIN_D6		12
-#define NODE_PIN_D7		13
-#define NODE_PIN_D8		15
-
 //Create the I/O pin masks
 uint8_t pinMask_DIN[] = {PINMASK_DIN};
 uint8_t pinMask_AIN[] = {PINMASK_AIN};

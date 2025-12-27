@@ -6,7 +6,7 @@ export const ContactButton = ({ onDragStart }: ComponentPropsWithoutRef<'div'>) 
   return (
     <ActivityBarButton aria-label='Contact'>
       <div draggable onDragStart={onDragStart}>
-        <ContactIcon size='sm' />
+        <ContactIcon />
       </div>
     </ActivityBarButton>
   )

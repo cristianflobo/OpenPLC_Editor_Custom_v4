@@ -1972,8 +1972,7 @@ class CompilerModule {
 
     // -- Final message --
     _mainProcessPort.postMessage({
-      message:
-        '-------------------------------------------------------------------------------------------------------------\n',
+      message: '-------------------------------------------Completed-------------------------------------------\n',
     })
 
     // INFO: This step is under development.
