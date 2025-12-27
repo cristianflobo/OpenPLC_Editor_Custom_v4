@@ -129,6 +129,10 @@ class CompilerModule {
       cleanedMessage: message,
     }
   }
+  private counterProgress(cont: number) {
+    if (cont >= 99) cont = 99
+    return cont
+  }
 
   // Initialize paths based on the environment
   #constructBinaryDirectoryPath(): string {
@@ -1854,9 +1858,11 @@ class CompilerModule {
     // Step 8: Handle core installation
     _mainProcessPort.postMessage({ logLevel: 'info', message: 'Handling core installation...' })
     try {
-      await this.handleCoreInstallation(boardCore, (data, logLevel) => {
-        _mainProcessPort.postMessage({ logLevel, message: data })
+      let cont = 0
+      await this.handleCoreInstallation(boardCore, () => {
+        _mainProcessPort.postMessage({ logLevel: 'progress', message: this.counterProgress(cont++).toString() })
       })
+      _mainProcessPort.postMessage({ logLevel: 'progress', message: `100` })
     } catch (error) {
       _mainProcessPort.postMessage({
         logLevel: 'error',
@@ -1902,9 +1908,7 @@ class CompilerModule {
         projectPath: normalizedProjectPath,
         boardTarget,
         buildMD5Hash,
-        _handleOutputData: (data, logLevel) => {
-          _mainProcessPort.postMessage({ logLevel, message: data })
-        },
+        _handleOutputData: () => {},
       })
     } catch (error) {
       _mainProcessPort.postMessage({
@@ -1914,10 +1918,10 @@ class CompilerModule {
     }
 
     // Step 11: Generate Arduino CPP file
-    _mainProcessPort.postMessage({ logLevel: 'info', message: 'Generating Arduino CPP file...' })
+    _mainProcessPort.postMessage({ logLevel: 'info', message: 'Generating CPP file...' })
     try {
       await this.handleGenerateArduinoCppFile(normalizedProjectPath, boardTarget)
-      _mainProcessPort.postMessage({ logLevel: 'info', message: 'Arduino CPP file generated successfully.' })
+      _mainProcessPort.postMessage({ logLevel: 'info', message: 'CPP file generated successfully.' })
     } catch (error) {
       _mainProcessPort.postMessage({
         logLevel: 'error',
@@ -1928,17 +1932,18 @@ class CompilerModule {
     }
 
     // Step 12: Compile Arduino Program
-    _mainProcessPort.postMessage({ logLevel: 'info', message: 'Compiling Arduino program...' })
+    _mainProcessPort.postMessage({ logLevel: 'info', message: 'Compiling program...' })
     try {
+      let cont = 0
       await this.handleCompileArduinoProgram({
         boardTarget,
         boardHalsContent: halsContent[boardTarget],
         compilationPath,
-        handleOutputData: (data, logLevel) => {
-          _mainProcessPort.postMessage({ logLevel, message: data })
+        handleOutputData: () => {
+          _mainProcessPort.postMessage({ logLevel: 'progress', message: this.counterProgress(cont++).toString() })
         },
       })
-      _mainProcessPort.postMessage({ logLevel: 'info', message: 'Arduino program compiled successfully.' })
+      _mainProcessPort.postMessage({ logLevel: 'progress', message: '100' })
     } catch (error) {
       _mainProcessPort.postMessage({
         logLevel: 'error',
@@ -1950,16 +1955,19 @@ class CompilerModule {
 
     // Step 13: Upload program to board if necessary
     if (!compileOnly) {
-      _mainProcessPort.postMessage({ logLevel: 'info', message: 'Uploading program to board...' })
+      _mainProcessPort.postMessage({ logLevel: 'info', message: 'Uploading program to device...' })
       try {
+        let cont = 0
         await this.handleUploadProgram({
           projectPath: normalizedProjectPath,
           arduinoPlatform: halsContent[boardTarget]['platform'],
           compilationPath,
-          handleOutputData: (data, logLevel) => {
-            _mainProcessPort.postMessage({ logLevel, message: data })
+          handleOutputData: () => {
+            _mainProcessPort.postMessage({ logLevel: 'progress', message: this.counterProgress(cont++).toString() })
           },
         })
+        _mainProcessPort.postMessage({ logLevel: 'progress', message: '100' })
+        _mainProcessPort.postMessage({ logLevel: 'info', message: 'Restart your device' })
       } catch (error) {
         _mainProcessPort.postMessage({
           logLevel: 'error',
@@ -1972,7 +1980,7 @@ class CompilerModule {
 
     // -- Final message --
     _mainProcessPort.postMessage({
-      message: '-------------------------------------------Completed-------------------------------------------\n',
+      message: 'Completed',
     })
 
     // INFO: This step is under development.

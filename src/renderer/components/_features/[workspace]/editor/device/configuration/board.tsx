@@ -41,7 +41,6 @@ const Board = memo(function () {
   const setCompileOnly = compileOnlySelectors.useSetCompileOnly()
 
   const pins = pinSelectors.usePins()
-  console.log('Pins:', pins)
   const createNewPin = pinSelectors.useCreateNewPin()
   const removePin = pinSelectors.useRemovePin()
 
@@ -87,7 +86,7 @@ const Board = memo(function () {
       checkedElement.scrollIntoView({ block: 'start' })
     }
   }
-  console.log('formattedBoardState:', formattedBoardState)
+
   useEffect(() => {
     const handleDeviceValueAtFirstRender = () => {
       const boardInfos = availableBoards.get(deviceBoard)
