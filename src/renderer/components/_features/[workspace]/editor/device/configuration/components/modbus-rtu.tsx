@@ -57,6 +57,10 @@ const ModbusRTUComponent = memo(function ({ isModbusRTUEnabled }: { isModbusRTUE
     if (modbusRTU.rtuRS485ENPin) {
       setEnableRS485ENPin(true)
     }
+
+    if (modbusRTU.rtuSlaveId === null || modbusRTU.rtuSlaveId === undefined) {
+      setRTUConfig({ rtuConfig: 'rtuSlaveId', value: 0 })
+    }
   }, [])
 
   useEffect(() => {
@@ -84,7 +88,7 @@ const ModbusRTUComponent = memo(function ({ isModbusRTUEnabled }: { isModbusRTUE
       value: value as '9600' | '14400' | '19200' | '38400' | '57600' | '115200',
     })
   }
-
+  console.log(' modbusRTU.rtuSlaveId:', modbusRTU.rtuSlaveId)
   return (
     <div id='modbus-rtu-form-config-container' className={cn('flex gap-6', !isModbusRTUEnabled && 'hidden')}>
       <div id='modbus-rtu-form-config-left-slot' className='flex flex-1 flex-col gap-4'>
