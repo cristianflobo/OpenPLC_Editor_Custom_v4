@@ -1,3 +1,5 @@
 # Ignore artifacts:
 build
 coverage
+src/renderer/index.ejs
+src/renderer/assets/icons/about/logo.svg
