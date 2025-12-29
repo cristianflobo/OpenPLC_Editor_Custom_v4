@@ -38,7 +38,7 @@
     "define": "BOARD_ESP8266",
     "extra_libraries": [],
     "platform": "esp8266:esp8266:nodemcuv2",
-    "preview": "generic.jpg",
+    "preview": "FLOBO-ES82-4D4R.jpg",
     "source": "esp8266.cpp",
     "specs": {
       "CPU": "FLOBO ES82-4D4R",

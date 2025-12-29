@@ -111,7 +111,7 @@ const Board = memo(function () {
   useEffect(() => {
     const fetchPreviewImage = async () => {
       const boardInfos = availableBoards.get(deviceBoard)
-      const imagePath = await window.bridge.getPreviewImage(boardInfos?.preview || 'generic.png')
+      const imagePath = await window.bridge.getPreviewImage(boardInfos?.preview || 'generic.jpg')
       setPreviewImage(imagePath)
     }
     void fetchPreviewImage()
