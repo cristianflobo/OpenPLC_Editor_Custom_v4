@@ -1,7 +1,7 @@
 {
-  "name": "open-plc-editor",
+  "name": "rswitch",
   "version": "4.1.0",
-  "description": "OpenPLC Editor - IDE capable of creating programs for the OpenPLC Runtime",
+  "description": "RSwitch - IDE capable of creating programs for the OpenPLC Runtime",
   "license": "MIT",
   "author": {
     "name": "Autonomy Logic"

@@ -1337,7 +1337,7 @@ export const createSharedSlice: StateCreator<
 
       toast({
         title: 'The project was created successfully!',
-        description: 'To begin using the OpenPLC Editor, add a new POU to your project.',
+        description: 'To begin using RSwitch, add a new POU to your project.',
         variant: 'default',
       })
 

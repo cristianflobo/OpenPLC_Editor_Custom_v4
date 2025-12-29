@@ -9,7 +9,7 @@ SCREEN_RESOLUTION="1920x1080x24"
 
 print_header() {
     echo "=================================================="
-    echo "  OpenPLC Editor Headless VNC Setup Script"
+    echo "  RSwitch Headless VNC Setup Script"
     echo "  Version: ${SCRIPT_VERSION}"
     echo "=================================================="
     echo ""
@@ -176,7 +176,7 @@ stop_existing_services() {
     pkill -f "x11vnc.*-display :${DISPLAY_NUM}" 2>/dev/null && print_success "Stopped existing x11vnc" || print_info "No existing x11vnc to stop"
     pkill -f "websockify.*${NOVNC_PORT}" 2>/dev/null && print_success "Stopped existing noVNC" || print_info "No existing noVNC to stop"
     pkill -f "fluxbox.*-display :${DISPLAY_NUM}" 2>/dev/null && print_success "Stopped existing fluxbox" || print_info "No existing fluxbox to stop"
-    pkill -f "open-plc-editor" 2>/dev/null && print_success "Stopped existing OpenPLC Editor" || print_info "No existing OpenPLC Editor to stop"
+    pkill -f "open-plc-editor" 2>/dev/null && print_success "Stopped existing RSwitch" || print_info "No existing RSwitch to stop"
     
     sleep 2
     echo ""
@@ -316,7 +316,7 @@ extract_appimage() {
 start_application() {
     local repo_path=$1
     
-    print_info "Starting OpenPLC Editor..."
+    print_info "Starting RSwitch..."
     
     cd "$repo_path/squashfs-root"
     
@@ -326,10 +326,10 @@ start_application() {
     sleep 3
     
     if ps -p $app_pid > /dev/null; then
-        print_success "OpenPLC Editor started (PID: $app_pid)"
+        print_success "RSwitch started (PID: $app_pid)"
         echo "$app_pid" > /tmp/openplc-editor.pid
     else
-        print_error "Failed to start OpenPLC Editor"
+        print_error "Failed to start RSwitch"
         print_info "Check logs at /tmp/openplc-editor.log"
         tail -20 /tmp/openplc-editor.log
         exit 1
@@ -350,7 +350,7 @@ print_summary() {
     echo "  • fluxbox:        Window manager (PID: $(cat /tmp/openplc-fluxbox.pid 2>/dev/null || echo 'N/A'))"
     echo "  • x11vnc:         Port ${VNC_PORT} (PID: $(cat /tmp/openplc-x11vnc.pid 2>/dev/null || echo 'N/A'))"
     echo "  • noVNC:          Port ${NOVNC_PORT} (PID: $(cat /tmp/openplc-novnc.pid 2>/dev/null || echo 'N/A'))"
-    echo "  • OpenPLC Editor: Running (PID: $(cat /tmp/openplc-editor.pid 2>/dev/null || echo 'N/A'))"
+    echo "  • RSwitch:        Running (PID: $(cat /tmp/openplc-editor.pid 2>/dev/null || echo 'N/A'))"
     echo ""
     echo "Access the GUI:"
     echo "  • Web Browser:    http://localhost:${NOVNC_PORT}/vnc.html"
@@ -359,7 +359,7 @@ print_summary() {
     echo "Logs:"
     echo "  • x11vnc:         /tmp/x11vnc.log"
     echo "  • noVNC:          /tmp/novnc.log"
-    echo "  • OpenPLC Editor: /tmp/openplc-editor.log"
+    echo "  • RSwitch:        /tmp/openplc-editor.log"
     echo ""
     echo "To stop all services, run:"
     echo "  pkill -f 'Xvfb :${DISPLAY_NUM}'"

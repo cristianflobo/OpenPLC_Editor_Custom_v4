@@ -1,6 +1,6 @@
 {
   "name": "open-plc-editor",
-  "description": "OpenPLC Editor - IDE capable of creating programs for the OpenPLC Runtime",
+  "description": "RSwitch - IDE capable of creating programs for the OpenPLC Runtime",
   "keywords": [
     "electron",
     "react",
@@ -190,8 +190,8 @@
     "webpack-merge": "^5.9.0"
   },
   "build": {
-    "productName": "OpenPLC Editor",
-    "appId": "tobedetermined.openplceditor",
+    "productName": "RSwitch",
+    "appId": "tobedetermined.rswitch",
     "asar": true,
     "asarUnpack": "**\\*.{node,dll}",
     "files": [

@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-This document defines the technical design for migrating from UUID-based variable linking to name+type-based linking in the OpenPLC Editor, following IEC 61131-3 standards. The design addresses all six core linking rules specified in the migration plan and provides a clear implementation path for Phase 2.
+This document defines the technical design for migrating from UUID-based variable linking to name+type-based linking in RSwitch, following IEC 61131-3 standards. The design addresses all six core linking rules specified in the migration plan and provides a clear implementation path for Phase 2.
 
 **Design Principles:**
 - Case-insensitive name matching (IEC 61131-3 standard)

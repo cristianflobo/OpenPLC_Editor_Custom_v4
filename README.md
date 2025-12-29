@@ -1,30 +1,30 @@
-# Open PLC Editor - IDE
+# RSwitch IDE - Powered by SOFLOBO
 
-![GitHub stars](https://img.shields.io/github/stars/Autonomy-Logic/openplc-editor?color=fa6470)
-![GitHub issues](https://img.shields.io/github/issues/Autonomy-Logic/openplc-editor?color=d8b22d)
+![GitHub stars](https://img.shields.io/github/stars/cristianflobo/rswitch-editor?color=fa6470)
+![GitHub issues](https://img.shields.io/github/issues/cristianflobo/rswitch-editor?color=d8b22d)
 
 <p align="center">
-<img alt="draft-cover" src="assets/images/github-background.png">
+  <img height="300" alt="draft-cover" src="assets/images/github-background.png">
 </p>
 
-## Running a preview version
+## Overview
 
-In order to run the development version, clone the repository, and install dependencies via `npm`, you need network access.
+**RSwitch IDE** is a professional development environment tailored specifically for the **RSwitch Programmable Relay** family. This software is a customized and optimized distribution based on **OpenPLC Editor v4**, fully compliant with the IEC 61131-3 international standard for industrial control. It provides a robust interface for programming logic in Ladder (LD), Function Block Diagram (FBD), and other standardized languages.
 
-You'll need the following tools:
+## Developer Setup
 
+To run the development version locally, follow these steps to clone the repository and install the necessary dependencies.
+
+### Prerequisites
 - [Git](https://git-scm.com/)
-- [NodeJS](https://nodejs.org/en/download/), **x64**, version `>=20`
+- [NodeJS](https://nodejs.org/en/download/) (Version `>=20`, **x64** architecture)
 
-### Step by step
+### Step-by-Step Installation
 
-- Clone the repository locally and go to the project folder.
-
-```bash
-git clone https://github.com/Autonomy-Logic/openplc-editor.git
-
-cd openplc-editor
-```
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/cristianflobo/rswitch-editor.git
+   cd rswitch-editor
 
 - Install the dependencies
 
@@ -37,15 +37,3 @@ npm install
 ```bash
 npm run start:dev
 ```
-
-## Documentation
-
-Please go to the repository [wiki](https://github.com/Autonomy-Logic/openplc-editor/wiki) page to get instruction about the project.
-
-## Project Management
-
-Go to [project](https://github.com/orgs/Autonomy-Logic/projects/4) management page to see the current state of the project.
-
-## Issues
-
-Go to [issues](https://github.com/Autonomy-Logic/openplc-editor/issues) page to view the current state of issues in the project.

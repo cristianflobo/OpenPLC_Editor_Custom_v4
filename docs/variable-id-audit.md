@@ -1,8 +1,8 @@
-# Variable ID Audit - OpenPLC Editor
+# Variable ID Audit - RSwitch
 
 ## Executive Summary
 
-This document provides a comprehensive audit of all locations where variable IDs are currently used for linking variables to graphical elements in the OpenPLC Editor codebase. The audit was conducted as part of Phase 1 of the migration from UUID-based variable linking to name+type-based linking following IEC 61131-3 standards.
+This document provides a comprehensive audit of all locations where variable IDs are currently used for linking variables to graphical elements in the RSwitch codebase. The audit was conducted as part of Phase 1 of the migration from UUID-based variable linking to name+type-based linking following IEC 61131-3 standards.
 
 **Key Findings:**
 - Variable IDs are optional in the schema (`z.string().optional()`)

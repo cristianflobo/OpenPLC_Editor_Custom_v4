@@ -1,12 +1,12 @@
-# OpenPLC Editor Headless Setup Guide
+# RSwitch Headless Setup Guide
 
-This guide explains how to run the OpenPLC Editor GUI application in a headless Linux environment using the automated setup script.
+This guide explains how to run the RSwitch GUI application in a headless Linux environment using the automated setup script.
 
 ## Overview
 
-The `setup-headless-vnc.sh` script automates the complete setup of a headless environment for running the OpenPLC Editor with browser-based GUI access through noVNC. This is particularly useful for:
+The `setup-headless-vnc.sh` script automates the complete setup of a headless environment for running RSwitch with browser-based GUI access through noVNC. This is particularly useful for:
 
-- Running the OpenPLC Editor on headless servers
+- Running RSwitch on headless servers
 - Automating GUI testing in CI/CD pipelines
 - Remote access to the editor through a web browser
 - Development and testing in containerized environments
@@ -37,7 +37,7 @@ The setup creates the following service stack:
 │  ┌──────────────────────────────────────┐  │
 │  │  fluxbox (Window Manager)            │  │
 │  │  ┌────────────────────────────────┐  │  │
-│  │  │  OpenPLC Editor (Electron App) │  │  │
+│  │  │  RSwitch (Electron App)        │  │  │
 │  │  └────────────────────────────────┘  │  │
 │  └──────────────────────────────────────┘  │
 └─────────────────────────────────────────────┘

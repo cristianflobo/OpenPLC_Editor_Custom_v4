@@ -22,7 +22,7 @@ const TitleBarCenterSlot = () => {
     return (
       <>
         <OpenPLCIcon />
-        <span className='font-caption text-xs font-normal'>OpenPLC Editor</span>
+        <span className='font-caption text-xs font-normal'>RSwitch</span>
       </>
     )
   }
@@ -30,7 +30,7 @@ const TitleBarCenterSlot = () => {
    * Create a template for windows and other systems
    */
   const DefaultTemplate = () =>
-    path === '' ? <span className='font-caption text-xs font-normal'>OpenPLC Editor</span> : <></>
+    path === '' ? <span className='font-caption text-xs font-normal'>RSwitch</span> : <></>
   /**
    * Render the appropriate template based on the platform
    */

@@ -1,6 +1,6 @@
 {
-  "appId": "com.autonomylogic.openplceditor",
-  "productName": "OpenPLC Editor",
+  "appId": "com.rswitch.editor",
+  "productName": "RSwitch",
   "asar": true,
   "asarUnpack": "**\\*.{node,dll}",
   "generateUpdatesFilesForAllChannels": true,
@@ -28,8 +28,8 @@
       "arch": ["arm64", "x64"]
     },
     "extendInfo": {
-      "CFBundleDisplayName": "OpenPLC Editor",
-      "CFBundleName": "OpenPLC Editor"
+      "CFBundleDisplayName": "RSwitch",
+      "CFBundleName": "RSwitch"
     },
     "type": "distribution",
     "hardenedRuntime": true,

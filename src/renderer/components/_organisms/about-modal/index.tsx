@@ -19,11 +19,12 @@ const AboutModal = () => {
   const closeModal = () => {
     setModalOpen('aboutOpenPlc', false)
   }
-  const title = 'OpenPLC Editor 4.1.0'
-  const releaseDate = 'Release: 2025-12-19'
-  const description = 'Open Source IDE for the OpenPLC Runtime, compliant with the IEC 61131-3 international standard.'
-  const copyright = '© 2025 Autonomy Logic'
-  const linkUrl = 'https://autonomylogic.com'
+  const title = 'RSwitch IDE 1.0.0'
+  const releaseDate = 'Release: 2025-12-28'
+  const description =
+    'Entorno de programación para relés programables RSwitch. Basado en OpenPLC Editor, compatible con el estándar IEC 61131-3.'
+  const copyright = '© 2025 SOFLOBO | Portions © Autonomy Logic'
+  const linkUrl = 'https://soflobo.com'
 
   const handleOpenAboutLink = () => {
     void window.bridge.openExternalLinkAccelerator(linkUrl)
@@ -47,7 +48,7 @@ const AboutModal = () => {
   return (
     <Modal onOpenChange={handleOpenChange} open={isAboutModalOpen}>
       <ModalContent className='h-[520px] w-[508px] select-none flex-col justify-between px-4 py-4'>
-        <div className='flex h-[180px] w-full items-center justify-center bg-[#0464fb]'>
+        <div className='flex h-[180px] w-full items-center justify-center bg-[#000000]'>
           <img src={openPlcLogo} />
         </div>
 
