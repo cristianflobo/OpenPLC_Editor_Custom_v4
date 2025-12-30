@@ -84,6 +84,7 @@ export const DefaultWorkspaceActivityBar = ({ zoom }: DefaultWorkspaceActivityBa
 
   const [isCompiling, setIsCompiling] = useState(false)
   const [isDebuggerProcessing, setIsDebuggerProcessing] = useState(false)
+  const [debuggerIconVariant, setDebuggerIconVariant] = useState<'muted' | 'green' | 'red'>('green')
 
   const disabledButtonClass = 'disabled cursor-not-allowed opacity-50 [&>*:first-child]:hover:bg-transparent'
 
@@ -382,6 +383,12 @@ export const DefaultWorkspaceActivityBar = ({ zoom }: DefaultWorkspaceActivityBa
       workspaceActions.setDebuggerTargetIp(null)
       workspaceActions.setDebugForcedVariables(new Map())
       workspaceActions.clearFbDebugContext()
+      setDebuggerIconVariant('green')
+      consoleActions.addLog({
+        id: crypto.randomUUID(),
+        level: 'info',
+        message: `Debugger stopped.`,
+      })
       return
     }
 
@@ -1029,6 +1036,7 @@ export const DefaultWorkspaceActivityBar = ({ zoom }: DefaultWorkspaceActivityBa
             connectionType,
             connectionParams,
           )
+          console.log('Debugger connect result:', connectResult, connectionType, connectionParams)
           if (!connectResult.success) {
             consoleActions.addLog({
               id: crypto.randomUUID(),
@@ -1044,6 +1052,7 @@ export const DefaultWorkspaceActivityBar = ({ zoom }: DefaultWorkspaceActivityBa
             workspaceActions.setDebuggerTargetIp(targetIpAddress ?? null)
           }
           workspaceActions.setDebuggerVisible(true)
+          setDebuggerIconVariant('red')
           consoleActions.addLog({
             id: crypto.randomUUID(),
             level: 'info',
@@ -1188,6 +1197,7 @@ export const DefaultWorkspaceActivityBar = ({ zoom }: DefaultWorkspaceActivityBa
           onClick={() => void handleDebuggerClick()}
           disabled={isDebuggerProcessing}
           className={cn(isDebuggerProcessing && 'cursor-not-allowed opacity-50')}
+          debuggerVariant={debuggerIconVariant}
         />
       </TooltipSidebarWrapperButton>
     </>

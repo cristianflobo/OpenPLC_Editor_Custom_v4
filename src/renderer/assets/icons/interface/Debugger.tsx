@@ -3,7 +3,7 @@ import { ComponentPropsWithoutRef } from 'react'
 
 type IDebuggerIconProps = ComponentPropsWithoutRef<'svg'> & {
   size?: 'sm' | 'md' | 'lg'
-  variant?: 'default' | 'muted'
+  variant?: 'default' | 'muted' | 'green' | 'red'
 }
 
 const SizeClasses = {
@@ -14,6 +14,8 @@ const SizeClasses = {
 const VariantClasses = {
   default: '#0464FB',
   muted: '#B4D0FE',
+  green: '#22C55E',
+  red: '#EF4444',
 }
 
 export const DebuggerIcon = ({ className, variant = 'default', size = 'sm', ...res }: IDebuggerIconProps) => {
@@ -25,7 +27,7 @@ export const DebuggerIcon = ({ className, variant = 'default', size = 'sm', ...r
       className={cn(`${SizeClasses[size]}`, className)}
       {...res}
     >
-      <title>Debugger</title>
+      <title>{variant === 'green' ? 'Run Debugger' : `Stop Debugger `}</title>
       <path
         fillRule='evenodd'
         clipRule='evenodd'
