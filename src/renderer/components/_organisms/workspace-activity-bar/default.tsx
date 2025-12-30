@@ -86,7 +86,7 @@ export const DefaultWorkspaceActivityBar = ({ zoom }: DefaultWorkspaceActivityBa
   const [isDebuggerProcessing, setIsDebuggerProcessing] = useState(false)
   const [debuggerIconVariant, setDebuggerIconVariant] = useState<'muted' | 'green' | 'red'>('green')
 
-  const disabledButtonClass = 'disabled cursor-not-allowed opacity-50 [&>*:first-child]:hover:bg-transparent'
+  const disabledButtonClass = 'hidden disabled cursor-not-allowed opacity-50'
 
   const extractPythonData = (pous: typeof projectData.pous) => {
     return pous
