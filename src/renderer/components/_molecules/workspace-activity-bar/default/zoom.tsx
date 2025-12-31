@@ -6,7 +6,7 @@ import { ActivityBarButton } from '../../../_atoms/buttons'
 export const ZoomButton = (props: ComponentPropsWithoutRef<'button'>) => {
   return (
     <ActivityBarButton aria-label='Zoom' {...props}>
-      <ZoomInOut />
+      <ZoomInOut size='md' />
     </ActivityBarButton>
   )
 }

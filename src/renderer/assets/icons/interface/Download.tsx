@@ -4,7 +4,7 @@ import { cn } from '@utils/cn'
 import { IIconProps } from '../Types/iconTypes'
 
 export const DownloadIcon = (props: IIconProps) => {
-  const { className, size = 'sm', ...res } = props
+  const { className, size = 'md', ...res } = props
   const sizeClasses = IconStyles.sizeClasses.small[size]
   return (
     <svg

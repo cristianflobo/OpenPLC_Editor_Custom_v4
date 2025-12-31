@@ -8,7 +8,7 @@ type IDebuggerIconProps = ComponentPropsWithoutRef<'svg'> & {
 
 const SizeClasses = {
   sm: 'w-5 h-5',
-  md: 'w-8 h-8',
+  md: 'w-7 h-7',
   lg: 'w-12 h-12',
 }
 const VariantClasses = {
@@ -18,7 +18,7 @@ const VariantClasses = {
   red: '#EF4444',
 }
 
-export const DebuggerIcon = ({ className, variant = 'default', size = 'sm', ...res }: IDebuggerIconProps) => {
+export const DebuggerIcon = ({ className, variant = 'default', size = 'md', ...res }: IDebuggerIconProps) => {
   return (
     <svg
       viewBox='0 0 23 23'

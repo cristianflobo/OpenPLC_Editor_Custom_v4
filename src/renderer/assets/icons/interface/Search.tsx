@@ -15,6 +15,7 @@ export const SearchIcon = (props: IIconProps) => {
       className={cn(`${sizeClasses}`, className)}
       {...res}
     >
+      <title>Search in Project</title>
       <g opacity='0.4'>
         <path
           d='M19.7345 22.9923C20.6341 23.8919 22.0927 23.8919 22.9923 22.9923C23.8919 22.0927 23.8919 20.6341 22.9923 19.7345L18.417 15.1592L15.1592 18.417L19.7345 22.9923Z'

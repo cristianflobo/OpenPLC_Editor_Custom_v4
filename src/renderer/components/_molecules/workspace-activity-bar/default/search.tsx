@@ -36,7 +36,7 @@ export const SearchButton = () => {
     <Modal onOpenChange={handleOpenChange} open={isFindInProjectModalOpen}>
       <ModalTrigger asChild>
         <ActivityBarButton aria-label='Search'>
-          <SearchIcon />
+          <SearchIcon size='md' />
         </ActivityBarButton>
       </ModalTrigger>
       <ModalContent className='h-[424px] w-[668px] select-none flex-col justify-between px-8 py-4'>
