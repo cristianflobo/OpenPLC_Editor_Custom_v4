@@ -1,9 +1,21 @@
 #include "Arduino_OpenPLC.h"
 #include "defines.h"
+#include <RswitchCheck.h>
 
 #ifdef MODBUS_ENABLED
 #include "ModbusSlave.h"
 #endif
+
+// ===== BOTÓN DE SEGURIDAD =====
+// Configuración del botón de seguridad RUN/STOP
+#ifndef SAFETY_BUTTON_PIN
+    #define SAFETY_BUTTON_PIN 22  // Cambiar este pin según tu hardware (GPIO0 por defecto)
+#endif
+
+bool plc_run_mode = true;  // true = RUN, false = STOP
+bool last_button_state = HIGH;
+unsigned long last_debounce_time = 0;
+const unsigned long debounce_delay = 50;  // 50ms de debounce
 
 //Include WiFi lib to turn off WiFi radio on ESP32 and ESP8266 boards if we're not using WiFi
 #ifndef MBTCP
@@ -55,12 +67,18 @@ void setupCycleDelay(unsigned long long cycle_time)
 
 void setup()
 {
+    rswitch_check();
     //Turn off WiFi radio on ESP32 and ESP8266 boards if we're not using WiFi
     #ifndef MBTCP
         #if defined(BOARD_ESP8266) || defined(BOARD_ESP32)
             WiFi.mode(WIFI_OFF);
         #endif
     #endif
+    
+    // Configurar botón de seguridad
+    pinMode(SAFETY_BUTTON_PIN, INPUT_PULLUP);
+    plc_run_mode = digitalRead(SAFETY_BUTTON_PIN) == HIGH;  // HIGH = RUN, LOW = STOP
+    
     config_init__();
     glueVars();
     hardwareInit();
@@ -289,11 +307,68 @@ void modbusTask()
 }
 #endif
 
+// Función para leer el botón de seguridad con debounce
+void readSafetyButton()
+{
+    bool current_button = digitalRead(SAFETY_BUTTON_PIN);
+    
+    // Detectar cambio de estado con debounce
+    if (current_button != last_button_state)
+    {
+        last_debounce_time = millis();
+    }
+    
+    if ((millis() - last_debounce_time) > debounce_delay)
+    {
+        // El estado del botón es estable
+        plc_run_mode = (current_button == HIGH);  // HIGH = RUN, LOW = STOP
+    }
+    
+    last_button_state = current_button;
+}
+
+// Función para forzar todas las salidas a 0 en modo STOP
+void forceSafeOutputs()
+{
+    // Forzar salidas digitales a 0
+    for (int i = 0; i < MAX_DIGITAL_OUTPUT; i++)
+    {
+        if (bool_output[i/8][i%8] != NULL)
+        {
+            *bool_output[i/8][i%8] = 0;
+        }
+    }
+    
+    // Forzar salidas analógicas a 0
+    for (int i = 0; i < MAX_ANALOG_OUTPUT; i++)
+    {
+        if (int_output[i] != NULL)
+        {
+            *int_output[i] = 0;
+        }
+    }
+}
+
 void plcCycleTask()
 {
     updateInputBuffers();
-    config_run__(__tick++); //PLC Logic
-    updateOutputBuffers();
+    
+    // Leer estado del botón de seguridad
+    readSafetyButton();
+    
+    if (plc_run_mode)
+    {
+        // Modo RUN: ejecutar lógica del PLC normalmente
+        config_run__(__tick++); //PLC Logic
+        updateOutputBuffers();
+    }
+    else
+    {
+        // Modo STOP: forzar todas las salidas a 0 (seguridad)
+        forceSafeOutputs();
+        updateOutputBuffers();
+    }
+    
     updateTime();
 }
 

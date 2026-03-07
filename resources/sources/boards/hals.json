@@ -1,5 +1,5 @@
 {
-  "FLOBO ES3-4D4R": {
+  "FLOBO RSW3-8D8R": {
     "board_manager_url": "https://espressif.github.io/arduino-esp32/package_esp32_index.json",
     "compiler": "arduino-cli",
     "core": "esp32:esp32",
@@ -9,13 +9,13 @@
     "default_aout": {"10": "QW0", "11": "QW1", "12": "QW2", "13": "QW3"},
     "default_din": {"6": "I0", "7": "I1", "8": "I2", "9": "I3"},
     "default_dout": {"14": "Q0", "15": "Q1", "16": "Q2", "17": "Q3"},
-    "define": "FLOBO ES3-4D4R",
+    "define": "FLOBO RSW3-8D8R",
     "extra_libraries": [],
-    "platform": "esp32:esp32:esp32s3",
+    "platform": "esp32:esp32:esp32:UploadSpeed=115200",
     "preview": "FLOBO-ES3-4D4R.jpg",
     "source": "esp32.cpp",
     "specs": {
-      "CPU": "FLOBO ES3-4D4R",
+      "CPU": "FLOBO RSW3-8D8R",
       "RAM": "512 KB",
       "Flash": "4 MB",
       "Digital Pins": "4",
