@@ -86,7 +86,7 @@ export const DefaultWorkspaceActivityBar = ({ zoom }: DefaultWorkspaceActivityBa
   const [isDebuggerProcessing, setIsDebuggerProcessing] = useState(false)
   const [debuggerIconVariant, setDebuggerIconVariant] = useState<'muted' | 'green' | 'red'>('green')
 
-  const disabledButtonClass = 'hidden disabled cursor-not-allowed opacity-50'
+  const disabledButtonClass = 'disabled cursor-not-allowed opacity-50'
 
   const extractPythonData = (pous: typeof projectData.pous) => {
     return pous
@@ -1169,8 +1169,8 @@ export const DefaultWorkspaceActivityBar = ({ zoom }: DefaultWorkspaceActivityBa
       </TooltipSidebarWrapperButton>
       <TooltipSidebarWrapperButton tooltipContent='Compile'>
         <DownloadButton
-          disabled={isCompiling}
-          className={cn(isCompiling ? `${disabledButtonClass}` : '')}
+          disabled={isCompiling || isDebuggerProcessing}
+          className={cn((isCompiling || isDebuggerProcessing) && `${disabledButtonClass}`)}
           // eslint-disable-next-line @typescript-eslint/no-misused-promises
           onClick={() => verifyAndCompile()}
         />
@@ -1187,7 +1187,7 @@ export const DefaultWorkspaceActivityBar = ({ zoom }: DefaultWorkspaceActivityBa
         <PlayButton
           onClick={() => void handlePlcControl()}
           disabled={connectionStatus !== 'connected'}
-          className={cn(connectionStatus !== 'connected' ? disabledButtonClass : '')}
+          className={cn(connectionStatus !== 'connected' ? 'hidden ' + disabledButtonClass : '')}
         >
           {plcStatus === 'RUNNING' ? <StopIcon /> : null}
         </PlayButton>
@@ -1195,8 +1195,8 @@ export const DefaultWorkspaceActivityBar = ({ zoom }: DefaultWorkspaceActivityBa
       <TooltipSidebarWrapperButton tooltipContent='Debugger'>
         <DebuggerButton
           onClick={() => void handleDebuggerClick()}
-          disabled={isDebuggerProcessing}
-          className={cn(isDebuggerProcessing && 'cursor-not-allowed opacity-50')}
+          disabled={isDebuggerProcessing || isCompiling}
+          className={cn((isDebuggerProcessing || isCompiling) && 'cursor-not-allowed opacity-50')}
           debuggerVariant={debuggerIconVariant}
         />
       </TooltipSidebarWrapperButton>
