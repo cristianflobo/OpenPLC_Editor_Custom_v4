@@ -1100,14 +1100,22 @@ export const createSharedSlice: StateCreator<
               path: '/pous/programs/main.json',
               elementType: { type: 'program', language: mainPou.data.language },
             }
+            const configurationTabToBeCreated: TabsProps = {
+              name: 'Configuration',
+              path: '/device',
+              elementType: { type: 'device', derivation: 'configuration' },
+            }
 
             // Add and set editor
             const model = CreateEditorObjectFromTab(tabToBeCreated)
+            const configurationModel = CreateEditorObjectFromTab(configurationTabToBeCreated)
             getState().editorActions.addModel(model)
+            getState().editorActions.addModel(configurationModel)
             getState().editorActions.setEditor(model)
 
             // Add and set tab
             getState().tabsActions.updateTabs(tabToBeCreated)
+            getState().tabsActions.updateTabs(configurationTabToBeCreated)
             getState().tabsActions.setSelectedTab(tabToBeCreated.name)
 
             // Set selected project tree leaf
@@ -1299,6 +1307,11 @@ export const createSharedSlice: StateCreator<
           path: '/pous/programs/main',
           elementType: { type: 'program', language: mainPou.data.language },
         }
+        const configurationTabToBeCreated: TabsProps = {
+          name: 'Configuration',
+          path: '/device',
+          elementType: { type: 'device', derivation: 'configuration' },
+        }
 
         // Set files in the file slice
         const files: FileSliceDataObject = {}
@@ -1321,11 +1334,14 @@ export const createSharedSlice: StateCreator<
 
         // Add and set editor
         const model = CreateEditorObjectFromTab(tabToBeCreated)
+        const configurationModel = CreateEditorObjectFromTab(configurationTabToBeCreated)
         getState().editorActions.addModel(model)
+        getState().editorActions.addModel(configurationModel)
         getState().editorActions.setEditor(model)
 
         // Add and set tab
         getState().tabsActions.updateTabs(tabToBeCreated)
+        getState().tabsActions.updateTabs(configurationTabToBeCreated)
         getState().tabsActions.setSelectedTab(tabToBeCreated.name)
 
         // Set selected project tree leaf
