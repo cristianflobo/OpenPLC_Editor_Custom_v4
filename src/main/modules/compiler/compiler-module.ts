@@ -38,6 +38,15 @@ type CompileArduinoProgramArgs = {
   handleOutputData: HandleOutputDataCallback
 }
 
+type ArduinoMemoryUsage = {
+  romUsedBytes: number
+  romMaxBytes: number
+  romRemainingBytes: number
+  ramUsedBytes: number
+  ramMaxBytes: number
+  ramRemainingBytes: number
+}
+
 class CompilerModule {
   binaryDirectoryPath: string
   sourceDirectoryPath: string
@@ -129,6 +138,44 @@ class CompilerModule {
       cleanedMessage: message,
     }
   }
+
+  private parseArduinoMemoryUsage(compilationOutput: string): ArduinoMemoryUsage | null {
+    const romMatch = compilationOutput.match(/Sketch uses\s+([\d,]+)\s+bytes[\s\S]*?Maximum is\s+([\d,]+)\s+bytes\.?/i)
+    const ramMatch = compilationOutput.match(
+      /Global variables use\s+([\d,]+)\s+bytes[\s\S]*?leaving\s+([\d,]+)\s+bytes[\s\S]*?Maximum is\s+([\d,]+)\s+bytes\.?/i,
+    )
+
+    if (!romMatch || !ramMatch) return null
+
+    const romUsedBytes = Number.parseInt(romMatch[1].replaceAll(',', ''), 10)
+    const romMaxBytes = Number.parseInt(romMatch[2].replaceAll(',', ''), 10)
+
+    const ramUsedBytes = Number.parseInt(ramMatch[1].replaceAll(',', ''), 10)
+    const ramRemainingBytes = Number.parseInt(ramMatch[2].replaceAll(',', ''), 10)
+    const ramMaxBytes = Number.parseInt(ramMatch[3].replaceAll(',', ''), 10)
+
+    if (
+      Number.isNaN(romUsedBytes) ||
+      Number.isNaN(romMaxBytes) ||
+      Number.isNaN(ramUsedBytes) ||
+      Number.isNaN(ramRemainingBytes) ||
+      Number.isNaN(ramMaxBytes)
+    ) {
+      return null
+    }
+
+    const romRemainingBytes = Math.max(0, romMaxBytes - romUsedBytes)
+
+    return {
+      romUsedBytes,
+      romMaxBytes,
+      romRemainingBytes,
+      ramUsedBytes,
+      ramMaxBytes,
+      ramRemainingBytes,
+    }
+  }
+
   private counterProgress(cont: number) {
     if (cont >= 99) cont = 99
     return cont
@@ -1933,16 +1980,20 @@ class CompilerModule {
 
     // Step 12: Compile Arduino Program
     _mainProcessPort.postMessage({ logLevel: 'info', message: 'Compiling program...' })
+    let arduinoMemoryUsage: ArduinoMemoryUsage | null = null
     try {
       let cont = 0
+      let compileOutput = ''
       await this.handleCompileArduinoProgram({
         boardTarget,
         boardHalsContent: halsContent[boardTarget],
         compilationPath,
-        handleOutputData: () => {
+        handleOutputData: (data) => {
+          compileOutput += data.toString()
           _mainProcessPort.postMessage({ logLevel: 'progress', message: this.counterProgress(cont++).toString() })
         },
       })
+      arduinoMemoryUsage = this.parseArduinoMemoryUsage(compileOutput)
       _mainProcessPort.postMessage({ logLevel: 'progress', message: '100' })
     } catch (error) {
       _mainProcessPort.postMessage({
@@ -1967,6 +2018,22 @@ class CompilerModule {
           },
         })
         _mainProcessPort.postMessage({ logLevel: 'progress', message: '100' })
+
+        if (arduinoMemoryUsage) {
+          _mainProcessPort.postMessage({
+            logLevel: 'info',
+            message: `ROM usada: ${Math.trunc((arduinoMemoryUsage.romUsedBytes * 100) / arduinoMemoryUsage.romMaxBytes)} %`,
+          })
+          _mainProcessPort.postMessage({
+            logLevel: 'info',
+            message: `RAM usada: ${Math.trunc((arduinoMemoryUsage.ramUsedBytes * 100) / arduinoMemoryUsage.ramMaxBytes)} %`,
+          })
+        } else {
+          _mainProcessPort.postMessage({
+            logLevel: 'warning',
+            message: 'No se pudo extraer el resumen de memoria (ROM/RAM) desde la salida de compilación.',
+          })
+        }
         _mainProcessPort.postMessage({ logLevel: 'info', message: 'Restart your device' })
       } catch (error) {
         _mainProcessPort.postMessage({
