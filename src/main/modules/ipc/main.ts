@@ -533,6 +533,7 @@ class MainProcessBridge implements MainIpcModule {
     this.ipcMain.handle('hardware:get-available-boards', this.handleHardwareGetAvailableBoards)
     this.ipcMain.handle('hardware:refresh-communication-ports', this.handleHardwareRefreshCommunicationPorts)
     this.ipcMain.handle('hardware:refresh-available-boards', this.handleHardwareRefreshAvailableBoards)
+    this.ipcMain.handle('hardware:detect-board-from-communication-port', this.handleHardwareDetectBoardFromPort)
 
     // ===================== UTILITIES =====================
     this.ipcMain.handle('util:get-preview-image', this.handleUtilGetPreviewImage)
@@ -760,6 +761,14 @@ class MainProcessBridge implements MainIpcModule {
   handleHardwareGetAvailableBoards = async () => this.hardwareModule.getAvailableBoards()
   handleHardwareRefreshCommunicationPorts = async () => this.hardwareModule.getAvailableSerialPorts()
   handleHardwareRefreshAvailableBoards = async () => this.hardwareModule.getAvailableBoards()
+  handleHardwareDetectBoardFromPort = (_event: IpcMainInvokeEvent, port: string) => {
+    const hardwareModule = this.hardwareModule as {
+      detectBoardFromCommunicationPort: (
+        serialPort: string,
+      ) => Promise<{ success: boolean; cpu?: string; board?: string; error?: string }>
+    }
+    return hardwareModule.detectBoardFromCommunicationPort(port)
+  }
 
   // Utility handlers
   handleUtilGetPreviewImage = async (_event: IpcMainInvokeEvent, image: string) =>

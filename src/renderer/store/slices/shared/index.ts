@@ -1670,6 +1670,11 @@ export const createSharedSlice: StateCreator<
               currentSelectedPinTableRow: -1,
             },
             compileOnly: getState().deviceDefinitions.compileOnly,
+            serialDeviceIdentification: {
+              status: 'idle' as const,
+              detectedCpu: null,
+              detectedBoard: null,
+            },
           }
           break
         }

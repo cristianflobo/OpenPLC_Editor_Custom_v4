@@ -15,7 +15,7 @@
     "preview": "FLOBO-ES3-4D4R.jpg",
     "source": "esp32.cpp",
     "specs": {
-      "CPU": "FLOBO RSW3-8D8R",
+      "CPU": "RSW3-8D8R",
       "RAM": "512 KB",
       "Flash": "4 MB",
       "Digital Pins": "4",

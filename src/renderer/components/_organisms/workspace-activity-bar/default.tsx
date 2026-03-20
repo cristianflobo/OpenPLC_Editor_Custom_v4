@@ -105,6 +105,30 @@ export const DefaultWorkspaceActivityBar = ({ zoom }: DefaultWorkspaceActivityBa
   const plcStatus = useOpenPLCStore((state): RuntimeConnection['plcStatus'] => state.runtimeConnection.plcStatus)
   const jwtToken = useOpenPLCStore((state) => state.runtimeConnection.jwtToken)
   const runtimeIpAddress = useOpenPLCStore((state) => state.deviceDefinitions.configuration.runtimeIpAddress)
+  const selectedBoard = useOpenPLCStore((state) => state.deviceDefinitions.configuration.deviceBoard)
+  const selectedCommunicationPort = useOpenPLCStore((state) => state.deviceDefinitions.configuration.communicationPort)
+  const serialIdentificationStatus = useOpenPLCStore(
+    (state: {
+      deviceDefinitions: {
+        serialDeviceIdentification: {
+          status: 'idle' | 'identifying' | 'identified' | 'error'
+        }
+      }
+    }) => state.deviceDefinitions.serialDeviceIdentification.status,
+  )
+
+  const selectedBoardInfo = availableBoards.get(selectedBoard)
+  const requiresSerialIdentification =
+    !isOpenPLCRuntimeTarget(selectedBoardInfo) &&
+    !!selectedCommunicationPort &&
+    selectedCommunicationPort !== 'fallback'
+  const uploadBlockedBySerialIdentification =
+    requiresSerialIdentification && serialIdentificationStatus !== 'identified'
+  const uploadTooltip = uploadBlockedBySerialIdentification
+    ? serialIdentificationStatus === 'identifying'
+      ? 'Detecting serial device...'
+      : 'Device not identified on selected serial port'
+    : 'Compile'
 
   const applyEarlyCommentWrapping = (projectData: PLCProjectData): PLCProjectData => {
     return {
@@ -1167,10 +1191,12 @@ export const DefaultWorkspaceActivityBar = ({ zoom }: DefaultWorkspaceActivityBa
       <TooltipSidebarWrapperButton tooltipContent='Open/Close Toolbox'>
         <ZoomButton {...zoom} />
       </TooltipSidebarWrapperButton>
-      <TooltipSidebarWrapperButton tooltipContent='Compile'>
+      <TooltipSidebarWrapperButton tooltipContent={uploadTooltip}>
         <DownloadButton
-          disabled={isCompiling || isDebuggerProcessing}
-          className={cn((isCompiling || isDebuggerProcessing) && `${disabledButtonClass}`)}
+          disabled={isCompiling || isDebuggerProcessing || uploadBlockedBySerialIdentification}
+          className={cn(
+            (isCompiling || isDebuggerProcessing || uploadBlockedBySerialIdentification) && `${disabledButtonClass}`,
+          )}
           // eslint-disable-next-line @typescript-eslint/no-misused-promises
           onClick={() => verifyAndCompile()}
         />

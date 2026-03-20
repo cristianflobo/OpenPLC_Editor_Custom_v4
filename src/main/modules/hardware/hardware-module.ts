@@ -5,8 +5,23 @@ import { promisify } from 'node:util'
 
 import { app as electronApp } from 'electron'
 import { produce } from 'immer'
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore - serialport types are not available at build time but will be at runtime
+import { SerialPort as SerialPortClass } from 'serialport'
 
 import type { AvailableBoards, HalsFile, SerialPort } from './hardware-types'
+
+/** Minimal interface covering the SerialPort methods used for board detection. */
+interface SerialPortInstance {
+  isOpen: boolean
+  open(callback: (error: Error | null) => void): void
+  close(callback: (error?: Error | null) => void): void
+  set(options: { dtr?: boolean; rts?: boolean }, callback: (error: Error | null) => void): void
+  on(event: 'data', listener: (chunk: Buffer) => void): this
+  on(event: 'error', listener: (error: Error) => void): this
+  removeListener(event: 'data', listener: (chunk: Buffer) => void): this
+  removeListener(event: 'error', listener: (error: Error) => void): this
+}
 
 // interface MethodsResult<T> {
 //   success: boolean
@@ -21,6 +36,10 @@ class HardwareModule {
   arduinoCliConfigurationFilePath: string
   arduinoCliBaseParameters: string[]
   arduinoCoreFilePath: string
+
+  private static readonly SERIAL_DETECT_BAUD_RATE = 115200
+  private static readonly SERIAL_DETECT_TIMEOUT_MS = 6000
+  private static readonly SERIAL_RESET_WAIT_MS = 1000
 
   // ############################################################################
   // =========================== Static properties ==============================
@@ -189,6 +208,164 @@ class HardwareModule {
       this.getAvailableBoards(),
     ])
     return { ports: communicationPorts, boards: availableBoards }
+  }
+
+  private sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms))
+  }
+
+  private async resetDevice(serialPort: SerialPortInstance): Promise<void> {
+    // NOTE: This is a generic reset implementation using DTR/RTS toggling.
+    // If your target requires a custom reset sequence, replace this method body.
+    await new Promise<void>((resolve, reject) => {
+      serialPort.set({ dtr: false, rts: false }, (error: unknown) => {
+        if (error) {
+          reject(new Error(error instanceof Error ? error.message : JSON.stringify(error)))
+          return
+        }
+        resolve()
+      })
+    })
+
+    await this.sleep(150)
+
+    await new Promise<void>((resolve, reject) => {
+      serialPort.set({ dtr: true, rts: true }, (error: unknown) => {
+        if (error) {
+          reject(new Error(error instanceof Error ? error.message : JSON.stringify(error)))
+          return
+        }
+        resolve()
+      })
+    })
+  }
+
+  private extractCpuSignature(data: string): string | null {
+    const match = data.match(/\bRS[A-Z0-9-]*\b/g)
+    return match && match.length > 0 ? match[0] : null
+  }
+
+  async detectBoardFromCommunicationPort(
+    port: string,
+  ): Promise<{ success: boolean; cpu?: string; board?: string; error?: string }> {
+    if (!port || port === 'fallback') {
+      return { success: false, error: 'Invalid communication port.' }
+    }
+
+    let serialPort: SerialPortInstance | null = null
+
+    try {
+      const halsFilePath = join(this.sourcesDirectoryPath, 'boards', 'hals.json')
+      const halsFileContent = await HardwareModule.readJSONFile<HalsFile>(halsFilePath)
+
+      serialPort = new SerialPortClass({
+        path: port,
+        baudRate: HardwareModule.SERIAL_DETECT_BAUD_RATE,
+        dataBits: 8,
+        stopBits: 1,
+        parity: 'none',
+        autoOpen: false,
+      }) as SerialPortInstance
+
+      // Capture in a non-null const so TypeScript can narrow it inside all closures below.
+      const sp = serialPort
+
+      await new Promise<void>((resolve, reject) => {
+        sp.open((error: unknown) => {
+          if (error) {
+            reject(new Error(error instanceof Error ? error.message : JSON.stringify(error)))
+            return
+          }
+          resolve()
+        })
+      })
+
+      const cpu = await new Promise<string>((resolve, reject) => {
+        let buffer = ''
+        let completed = false
+
+        const onData = (chunk: Buffer) => {
+          buffer += chunk.toString('utf8')
+
+          if (buffer.length > 8192) {
+            buffer = buffer.slice(-8192)
+          }
+
+          const extractedCpu = this.extractCpuSignature(buffer)
+          if (!extractedCpu) return
+
+          completed = true
+          cleanup()
+          resolve(extractedCpu)
+        }
+
+        const onError = (error: Error) => {
+          completed = true
+          cleanup()
+          reject(error)
+        }
+
+        const timeoutHandle = setTimeout(() => {
+          if (completed) return
+          completed = true
+          cleanup()
+          reject(new Error('No CPU signature received from device.'))
+        }, HardwareModule.SERIAL_DETECT_TIMEOUT_MS)
+
+        const cleanup = () => {
+          clearTimeout(timeoutHandle)
+          sp.removeListener('data', onData)
+          sp.removeListener('error', onError)
+        }
+
+        sp.on('data', onData)
+        sp.on('error', onError)
+
+        void (async () => {
+          try {
+            await this.resetDevice(sp)
+            await this.sleep(HardwareModule.SERIAL_RESET_WAIT_MS)
+          } catch (error) {
+            if (completed) return
+            completed = true
+            cleanup()
+            reject(error instanceof Error ? error : new Error(JSON.stringify(error)))
+          }
+        })()
+      })
+
+      const normalizedCpu = cpu.trim().toUpperCase()
+      const matchedBoard = Object.entries(halsFileContent).find(([, boardData]) => {
+        const boardCpu = boardData.specs?.CPU
+        return typeof boardCpu === 'string' && boardCpu.trim().toUpperCase() === normalizedCpu
+      })
+
+      if (!matchedBoard) {
+        return {
+          success: false,
+          cpu,
+          error: `CPU '${cpu}' was detected but no matching board exists in hals.json.`,
+        }
+      }
+
+      return {
+        success: true,
+        cpu,
+        board: matchedBoard[0],
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      }
+    } finally {
+      if (serialPort?.isOpen) {
+        const sp = serialPort
+        await new Promise<void>((resolve) => {
+          sp.close(() => resolve())
+        })
+      }
+    }
   }
 }
 

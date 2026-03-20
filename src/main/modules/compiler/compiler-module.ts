@@ -784,6 +784,16 @@ class CompilerModule {
       }
     }
 
+    // 1.5. Inject the CPU model identifier for serial auto-detection.
+    // specs.CPU is read from hals.json at runtime (not in the Zod schema, but present in the JSON).
+    const boardCpuModel = (boardEntry as unknown as { specs?: { CPU?: string } })?.specs?.CPU
+    if (boardCpuModel) {
+      if (!DEFINES_CONTENT.startsWith('// Board defines')) {
+        DEFINES_CONTENT = '// Board defines\n'
+      }
+      DEFINES_CONTENT += `#define BOARD_CPU_MODEL "${boardCpuModel}"\n`
+    }
+
     // 2. If the board entry does not have the define property, we will just write a double line break to the file.
     DEFINES_CONTENT += '\n\n'
 

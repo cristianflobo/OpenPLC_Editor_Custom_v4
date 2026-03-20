@@ -27,6 +27,11 @@ const createDeviceSlice: StateCreator<DeviceSlice, [], [], DeviceSlice> = (setSt
       currentSelectedPinTableRow: -1,
     },
     compileOnly: true, // This flag indicates if the device is set to compile only (no deployment)
+    serialDeviceIdentification: {
+      status: 'idle',
+      detectedCpu: null,
+      detectedBoard: null,
+    },
   },
   deviceUpdated: {
     updated: false,
@@ -74,6 +79,11 @@ const createDeviceSlice: StateCreator<DeviceSlice, [], [], DeviceSlice> = (setSt
             currentSelectedPinTableRow: -1,
           }
           deviceDefinitions.compileOnly = true
+          deviceDefinitions.serialDeviceIdentification = {
+            status: 'idle',
+            detectedCpu: null,
+            detectedBoard: null,
+          }
         }),
       )
     },
@@ -483,6 +493,19 @@ const createDeviceSlice: StateCreator<DeviceSlice, [], [], DeviceSlice> = (setSt
       setState(
         produce(({ deviceDefinitions }: DeviceSlice) => {
           deviceDefinitions.temporaryDhcpIp = ipAddress
+        }),
+      )
+    },
+    setSerialDeviceIdentification: ({ status, detectedCpu, detectedBoard }): void => {
+      setState(
+        produce(({ deviceDefinitions }: DeviceSlice) => {
+          deviceDefinitions.serialDeviceIdentification.status = status
+          if (detectedCpu !== undefined) {
+            deviceDefinitions.serialDeviceIdentification.detectedCpu = detectedCpu
+          }
+          if (detectedBoard !== undefined) {
+            deviceDefinitions.serialDeviceIdentification.detectedBoard = detectedBoard
+          }
         }),
       )
     },

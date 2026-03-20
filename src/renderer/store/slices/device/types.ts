@@ -108,6 +108,11 @@ const deviceStateSchema = z.object({
     pinMapping: devicePinMappingSchema,
     compileOnly: z.boolean().default(true),
     temporaryDhcpIp: z.string().optional(),
+    serialDeviceIdentification: z.object({
+      status: z.enum(['idle', 'identifying', 'identified', 'error']),
+      detectedCpu: z.string().nullable(),
+      detectedBoard: z.string().nullable(),
+    }),
   }),
   deviceUpdated: z.object({
     updated: z.boolean(),
@@ -194,6 +199,16 @@ const deviceActionSchema = z.object({
     .returns(z.void()),
   setTimingStats: z.function().args(timingStatsSchema.nullable()).returns(z.void()),
   setTemporaryDhcpIp: z.function().args(z.string().optional()).returns(z.void()),
+  setSerialDeviceIdentification: z
+    .function()
+    .args(
+      z.object({
+        status: z.enum(['idle', 'identifying', 'identified', 'error']),
+        detectedCpu: z.string().nullable().optional(),
+        detectedBoard: z.string().nullable().optional(),
+      }),
+    )
+    .returns(z.void()),
 })
 
 type DeviceActions = Omit<z.infer<typeof deviceActionSchema>, 'setTimingStats'> & {

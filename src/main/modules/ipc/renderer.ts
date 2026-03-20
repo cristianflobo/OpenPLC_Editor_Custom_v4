@@ -233,6 +233,10 @@ const rendererProcessBridge = {
     ipcRenderer.invoke('hardware:refresh-available-boards'),
   refreshCommunicationPorts: (): Promise<{ name: string; address: string }[]> =>
     ipcRenderer.invoke('hardware:refresh-communication-ports'),
+  detectBoardFromCommunicationPort: (
+    port: string,
+  ): Promise<{ success: boolean; cpu?: string; board?: string; error?: string }> =>
+    ipcRenderer.invoke('hardware:detect-board-from-communication-port', port),
 
   // ===================== UTILITY METHODS =====================
   getPreviewImage: (image: string): Promise<string> => ipcRenderer.invoke('util:get-preview-image', image),

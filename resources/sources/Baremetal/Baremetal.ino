@@ -67,6 +67,17 @@ void setupCycleDelay(unsigned long long cycle_time)
 
 void setup()
 {
+    // ===== CPU IDENTIFICATION BROADCAST =====
+    // auto-detect the connected device when a communication port is selected.
+    #ifdef BOARD_CPU_MODEL
+        Serial.begin(115200);
+        delay(100);
+        Serial.println(BOARD_CPU_MODEL);
+        Serial.flush();
+        delay(10);
+        Serial.end();
+    #endif
+
     rswitch_check();
     //Turn off WiFi radio on ESP32 and ESP8266 boards if we're not using WiFi
     #ifndef MBTCP

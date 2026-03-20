@@ -3,6 +3,7 @@ import { boardSelectors, compileOnlySelectors, pinSelectors } from '@hooks/use-s
 import { MinusIcon, PlusIcon, RefreshIcon } from '@root/renderer/assets'
 import { Checkbox, Label, Select, SelectContent, SelectItem, SelectTrigger } from '@root/renderer/components/_atoms'
 import TableActions from '@root/renderer/components/_atoms/table-actions'
+import { toast } from '@root/renderer/components/_features/[app]/toast/use-toast'
 import { Modal, ModalContent, ModalFooter, ModalHeader, ModalTitle } from '@root/renderer/components/_molecules/modal'
 import { DeviceEditorSlot } from '@root/renderer/components/_templates/[editors]'
 import { useOpenPLCStore } from '@root/renderer/store'
@@ -52,6 +53,15 @@ const Board = memo(function () {
   const setRuntimeConnectionStatus = useOpenPLCStore((state) => state.deviceActions.setRuntimeConnectionStatus)
   const setRuntimeJwtToken = useOpenPLCStore((state) => state.deviceActions.setRuntimeJwtToken)
   const openModal = useOpenPLCStore((state) => state.modalActions.openModal)
+  const serialIdentificationStatus = useOpenPLCStore(
+    (state: {
+      deviceDefinitions: {
+        serialDeviceIdentification: {
+          status: 'idle' | 'identifying' | 'identified' | 'error'
+        }
+      }
+    }) => state.deviceDefinitions.serialDeviceIdentification.status,
+  )
   const plcStatus = useOpenPLCStore((state): RuntimeConnection['plcStatus'] => state.runtimeConnection.plcStatus)
   const timingStats = useOpenPLCStore((state): TimingStats | null => state.runtimeConnection.timingStats)
   const setTimingStats = useOpenPLCStore(
@@ -207,6 +217,70 @@ const Board = memo(function () {
   }
   const memoizedCompileOnly = useMemo(() => compileOnly, [compileOnly])
 
+  const setSerialDeviceIdentification = (payload: {
+    status: 'idle' | 'identifying' | 'identified' | 'error'
+    detectedCpu?: string | null
+    detectedBoard?: string | null
+  }) => {
+    const action = useOpenPLCStore.getState().deviceActions.setSerialDeviceIdentification as (args: {
+      status: 'idle' | 'identifying' | 'identified' | 'error'
+      detectedCpu?: string | null
+      detectedBoard?: string | null
+    }) => void
+
+    action(payload)
+  }
+
+  const handleSetCommunicationPort = useCallback(
+    async (portAddress: string) => {
+      setCommunicationPort(portAddress)
+
+      if (!portAddress || portAddress === 'fallback') {
+        setSerialDeviceIdentification({ status: 'idle', detectedCpu: null, detectedBoard: null })
+        return
+      }
+
+      setSerialDeviceIdentification({ status: 'identifying', detectedCpu: null, detectedBoard: null })
+
+      try {
+        const result = await window.bridge.detectBoardFromCommunicationPort(portAddress)
+
+        if (!result.success || !result.board) {
+          setSerialDeviceIdentification({ status: 'error', detectedCpu: result.cpu ?? null, detectedBoard: null })
+          toast({
+            title: 'Error',
+            description: result.error ?? 'Could not identify the device from the selected serial port.',
+            variant: 'fail',
+          })
+          return
+        }
+
+        const detectedBoardInfo = availableBoards.get(result.board)
+        const formattedDetectedBoard = `${result.board}${detectedBoardInfo?.coreVersion ? ` [${detectedBoardInfo.coreVersion}]` : ''}`
+
+        setFormattedBoardState(formattedDetectedBoard)
+        setDeviceBoard(result.board)
+        setSerialDeviceIdentification({
+          status: 'identified',
+          detectedCpu: result.cpu ?? null,
+          detectedBoard: result.board,
+        })
+        toast({
+          title: 'Device detected',
+          description: `CPU: ${result.cpu ?? 'Unknown'} | Board: ${result.board}`,
+        })
+      } catch (error) {
+        setSerialDeviceIdentification({ status: 'error', detectedCpu: null, detectedBoard: null })
+        toast({
+          title: 'Error',
+          description: `Failed to connect to serial port: ${String(error)}`,
+          variant: 'fail',
+        })
+      }
+    },
+    [availableBoards, setCommunicationPort, setDeviceBoard, setSerialDeviceIdentification],
+  )
+
   const handleConnectToRuntime = useCallback(async () => {
     if (connectionStatus === 'connected') {
       // Disconnect - global polling hook will handle resetting failure counter
@@ -359,45 +433,53 @@ const Board = memo(function () {
             <Label id='device-selector-label' className='w-fit text-xs text-neutral-950 dark:text-white'>
               Device
             </Label>
-            <Select
-              value={formattedBoardState}
-              onValueChange={handleSetDeviceBoard}
-              onOpenChange={setDeviceSelectIsOpen}
-            >
-              <SelectTrigger
-                aria-label='Device selection'
-                placeholder={formattedBoardState}
-                withIndicator
-                className='flex h-[30px] w-full items-center justify-between gap-1 rounded-md border border-neutral-100 bg-white px-2 py-1 font-caption text-cp-sm font-medium text-neutral-850 outline-none data-[state=open]:border-brand-medium-dark dark:border-neutral-850 dark:bg-neutral-950 dark:text-neutral-300'
-              />
-              <SelectContent
-                className='h-[250px] w-[--radix-select-trigger-width] overflow-y-auto rounded-lg border border-neutral-100 bg-white outline-none drop-shadow-lg dark:border-brand-medium-dark dark:bg-neutral-950'
-                sideOffset={5}
-                alignOffset={5}
-                position='popper'
-                align='center'
-                side='bottom'
-                viewportRef={deviceSelectRef}
+            <div className='relative flex-1'>
+              {serialIdentificationStatus === 'identifying' && (
+                <div className='absolute inset-0 z-10 flex items-center justify-center gap-1 rounded-md bg-white/90 text-xs text-brand dark:bg-neutral-950/90'>
+                  <RefreshIcon size='sm' className='spin-refresh' />
+                  <span>Detecting...</span>
+                </div>
+              )}
+              <Select
+                value={formattedBoardState}
+                onValueChange={handleSetDeviceBoard}
+                onOpenChange={setDeviceSelectIsOpen}
               >
-                {Array.from(availableBoards.entries()).map(([board, data]) => {
-                  const formattedBoard = `${board}${data.coreVersion ? ` [${data.coreVersion}]` : ''}`
-                  return (
-                    <SelectItem
-                      key={board}
-                      className={cn(
-                        'data-[state=checked]:[&:not(:hover)]:bg-neutral-100 data-[state=checked]:dark:[&:not(:hover)]:bg-neutral-900',
-                        'flex w-full cursor-pointer items-center px-2 py-[9px] outline-none hover:bg-neutral-200 dark:hover:bg-neutral-850',
-                      )}
-                      value={formattedBoard}
-                    >
-                      <span className='flex items-center gap-2 font-caption text-cp-sm font-medium text-neutral-850 dark:text-neutral-300'>
-                        {formattedBoard}
-                      </span>
-                    </SelectItem>
-                  )
-                })}
-              </SelectContent>
-            </Select>
+                <SelectTrigger
+                  aria-label='Device selection'
+                  placeholder={formattedBoardState}
+                  withIndicator
+                  className='flex h-[30px] w-full items-center justify-between gap-1 rounded-md border border-neutral-100 bg-white px-2 py-1 font-caption text-cp-sm font-medium text-neutral-850 outline-none data-[state=open]:border-brand-medium-dark dark:border-neutral-850 dark:bg-neutral-950 dark:text-neutral-300'
+                />
+                <SelectContent
+                  className='h-[250px] w-[--radix-select-trigger-width] overflow-y-auto rounded-lg border border-neutral-100 bg-white outline-none drop-shadow-lg dark:border-brand-medium-dark dark:bg-neutral-950'
+                  sideOffset={5}
+                  alignOffset={5}
+                  position='popper'
+                  align='center'
+                  side='bottom'
+                  viewportRef={deviceSelectRef}
+                >
+                  {Array.from(availableBoards.entries()).map(([board, data]) => {
+                    const formattedBoard = `${board}${data.coreVersion ? ` [${data.coreVersion}]` : ''}`
+                    return (
+                      <SelectItem
+                        key={board}
+                        className={cn(
+                          'data-[state=checked]:[&:not(:hover)]:bg-neutral-100 data-[state=checked]:dark:[&:not(:hover)]:bg-neutral-900',
+                          'flex w-full cursor-pointer items-center px-2 py-[9px] outline-none hover:bg-neutral-200 dark:hover:bg-neutral-850',
+                        )}
+                        value={formattedBoard}
+                      >
+                        <span className='flex items-center gap-2 font-caption text-cp-sm font-medium text-neutral-850 dark:text-neutral-300'>
+                          {formattedBoard}
+                        </span>
+                      </SelectItem>
+                    )
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           {isOpenPLCRuntimeTarget(currentBoardInfo) ? (
             <>
@@ -452,7 +534,7 @@ const Board = memo(function () {
               </Label>
               <Select
                 value={communicationPort}
-                onValueChange={setCommunicationPort}
+                onValueChange={(port) => void handleSetCommunicationPort(port)}
                 onOpenChange={setCommunicationSelectIsOpen}
               >
                 <SelectTrigger
