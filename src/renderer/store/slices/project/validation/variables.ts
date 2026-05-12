@@ -382,7 +382,14 @@ const updateVariableValidation = (
 ) => {
   let response: ProjectResponse = { ok: true }
 
+  const disallowedLocationClasses: Array<PLCVariable['class']> = ['input', 'output', 'inOut', 'external', 'temp']
+  const targetClass = dataToBeUpdated.class ?? variableToUpdate.class
+
   if (dataToBeUpdated.class) response.data = { class: dataToBeUpdated.class }
+
+  if (dataToBeUpdated.class && disallowedLocationClasses.includes(dataToBeUpdated.class)) {
+    response.data = { ...(response.data ? response.data : {}), location: '' }
+  }
 
   if (dataToBeUpdated.name || dataToBeUpdated.name === '') {
     const { name } = dataToBeUpdated
@@ -419,6 +426,13 @@ const updateVariableValidation = (
 
   if (dataToBeUpdated.location) {
     const { location } = dataToBeUpdated
+
+    if (disallowedLocationClasses.includes(targetClass)) {
+      // Silently normalize invalid location for disallowed classes instead of surfacing a toast.
+      response.data = { ...(response.data ? response.data : {}), location: '' }
+      return response
+    }
+
     if (checkIfLocationExists(variables, location)) {
       console.error(`Location "${location}" already exists`)
       response = {

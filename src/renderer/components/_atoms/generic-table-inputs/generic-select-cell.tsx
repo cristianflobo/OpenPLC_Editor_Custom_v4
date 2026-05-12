@@ -18,6 +18,7 @@ export const GenericSelectCell = ({
     id: string
     value: string
     label?: string
+    disabled?: boolean
   }[]
   selected?: boolean
   openOnSelectedOption?: boolean
@@ -62,9 +63,11 @@ export const GenericSelectCell = ({
               <SelectItem
                 key={sv.id}
                 value={sv.value}
+                disabled={sv.disabled}
                 className={cn(
                   'flex w-full cursor-pointer items-center justify-center py-1 outline-none hover:bg-neutral-100 dark:hover:bg-neutral-900',
                   'data-[state=checked]:[&:not(:hover)]:bg-neutral-100 data-[state=checked]:dark:[&:not(:hover)]:bg-neutral-900',
+                  { 'pointer-events-none opacity-50': sv.disabled },
                 )}
               >
                 <span className='text-center font-caption text-xs font-normal text-neutral-700 dark:text-neutral-500'>

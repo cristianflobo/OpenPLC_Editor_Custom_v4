@@ -1707,12 +1707,6 @@ const WorkspaceScreen = () => {
                           </ResizablePanel>
                         </ResizablePanelGroup>
                       )}
-                      <ResizableHandle
-                        id='consoleResizeHandle'
-                        hitAreaMargins={{ coarse: 2, fine: 2 }}
-                        style={{ height: '2px', width: 'calc(100% - 16px)' }}
-                        className={`absolute bottom-0 left-0 mx-2 transition-colors duration-200 data-[resize-handle-active="pointer"]:bg-brand-light data-[resize-handle-state="hover"]:bg-brand-light data-[resize-handle-active="pointer"]:dark:bg-neutral-700 data-[resize-handle-state="hover"]:dark:bg-neutral-700`}
-                      />
                     </>
                   ) : (
                     <p className='mx-auto my-auto flex cursor-default select-none flex-col items-center gap-1 font-display text-xl font-medium'>

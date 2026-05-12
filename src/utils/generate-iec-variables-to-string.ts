@@ -30,6 +30,8 @@ export const generateIecVariablesToString = (variables: PLCVariable[]): string =
 
   let textualDeclaration = ''
   const orderedGroups = ['global', 'external', 'input', 'output', 'inout', 'local', 'temp']
+  const disallowedLocationGroups = new Set(['external', 'input', 'output', 'inout', 'temp'])
+  const disallowedInitialValueGroups = new Set(['external'])
 
   orderedGroups.forEach((groupName) => {
     if (groupedVariables[groupName]) {
@@ -39,11 +41,11 @@ export const generateIecVariablesToString = (variables: PLCVariable[]): string =
       groupedVariables[groupName].forEach((v) => {
         let line = `\t${v.name} : ${v.type.value}`
 
-        if (v.location) {
+        if (v.location && !disallowedLocationGroups.has(groupName)) {
           line += ` AT ${v.location}`
         }
 
-        if (v.initialValue) {
+        if (v.initialValue && !disallowedInitialValueGroups.has(groupName)) {
           line += ` := ${v.initialValue}`
         }
 
