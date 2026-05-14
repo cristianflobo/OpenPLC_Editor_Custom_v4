@@ -29,7 +29,6 @@ const BoardInfoSchema = z.object({
     DigitalPins: z.string(),
     AnalogPins: z.string(),
     PWMPins: z.string(),
-    WiFi: z.string(),
     Bluetooth: z.string(),
     Ethernet: z.string(),
   }),
@@ -74,7 +73,6 @@ type AvailableBoards = Map<
       DigitalPins: string
       AnalogPins: string
       PWMPins: string
-      WiFi: string
       Bluetooth: string
       Ethernet: string
     }
