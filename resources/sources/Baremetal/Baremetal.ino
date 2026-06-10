@@ -8,9 +8,9 @@
 
 // ===== BOTÓN DE SEGURIDAD =====
 // Configuración del botón de seguridad RUN/STOP
-#ifndef SAFETY_BUTTON_PIN
-    #define SAFETY_BUTTON_PIN 22  // Cambiar este pin según tu hardware (GPIO0 por defecto)
-#endif
+// #ifndef SAFETY_BUTTON_PIN
+//     #define SAFETY_BUTTON_PIN 22  // Cambiar este pin según tu hardware (GPIO0 por defecto)
+// #endif
 
 bool plc_run_mode = true;  // true = RUN, false = STOP
 bool last_button_state = HIGH;
@@ -42,6 +42,361 @@ extern uint8_t pinMask_DIN[];
 extern uint8_t pinMask_AIN[];
 extern uint8_t pinMask_DOUT[];
 extern uint8_t pinMask_AOUT[];
+
+void disablePinFromMasks(uint8_t targetPin)
+{
+    for (int i = 0; i < NUM_DISCRETE_INPUT; i++)
+    {
+        if (pinMask_DIN[i] == targetPin)
+            pinMask_DIN[i] = 255;
+    }
+    for (int i = 0; i < NUM_ANALOG_INPUT; i++)
+    {
+        if (pinMask_AIN[i] == targetPin)
+            pinMask_AIN[i] = 255;
+    }
+    for (int i = 0; i < NUM_DISCRETE_OUTPUT; i++)
+    {
+        if (pinMask_DOUT[i] == targetPin)
+            pinMask_DOUT[i] = 255;
+    }
+    for (int i = 0; i < NUM_ANALOG_OUTPUT; i++)
+    {
+        if (pinMask_AOUT[i] == targetPin)
+            pinMask_AOUT[i] = 255;
+    }
+}
+
+#ifdef MBSERIAL_MASTER
+#ifndef MBSERIAL_MASTER_READ_FC
+    #if MBSERIAL_MASTER_FC == 3 || MBSERIAL_MASTER_FC == 4
+        #define MBSERIAL_MASTER_READ_FC MBSERIAL_MASTER_FC
+    #else
+        #define MBSERIAL_MASTER_READ_FC 0
+    #endif
+#endif
+
+#ifndef MBSERIAL_MASTER_WRITE_FC
+    #if MBSERIAL_MASTER_FC == 6 || MBSERIAL_MASTER_FC == 16
+        #define MBSERIAL_MASTER_WRITE_FC MBSERIAL_MASTER_FC
+    #else
+        #define MBSERIAL_MASTER_WRITE_FC 0
+    #endif
+#endif
+
+Stream* mb_master_serialport = NULL;
+int8_t mb_master_txpin = -1;
+uint16_t mb_master_t15 = 750;
+uint16_t mb_master_t35 = 2625;
+unsigned long mb_master_last_poll = 0;
+
+void mbconfig_master_serial_iface(Stream* port, long baud, int txPin)
+{
+    mb_master_serialport = port;
+    mb_master_txpin = txPin;
+
+    if (txPin >= 0)
+    {
+        pinMode(txPin, OUTPUT);
+        digitalWrite(txPin, LOW);
+    }
+
+    if (baud > 19200)
+        mb_master_t15 = 750;
+    else
+        mb_master_t15 = 16500000/baud;
+
+    mb_master_t35 = mb_master_t15 * 3.5;
+}
+
+uint16_t calcMasterCrc(uint8_t *buffer, uint16_t length)
+{
+    uint8_t uchCRCHi = 0xFF;
+    uint8_t uchCRCLo = 0xFF;
+    uint16_t index;
+
+    while (length--)
+    {
+        index = uchCRCHi ^ *buffer++;
+        uchCRCHi = uchCRCLo ^ _auchCRCHi[index];
+        uchCRCLo = _auchCRCLo[index];
+    }
+
+    return (uchCRCHi << 8 | uchCRCLo);
+}
+
+void setMasterTransmit(bool enabled)
+{
+    if (mb_master_txpin >= 0)
+        digitalWrite(mb_master_txpin, enabled ? HIGH : LOW);
+}
+
+bool mbmasterReadRegisters(uint8_t slaveId, uint8_t functionCode, uint16_t startAddress, uint16_t registerCount, uint16_t *dest)
+{
+    if (mb_master_serialport == NULL || registerCount == 0 || registerCount > 64)
+        return false;
+
+    while ((*mb_master_serialport).available() > 0)
+        (*mb_master_serialport).read();
+
+    uint8_t request[8];
+    request[0] = slaveId;
+    request[1] = functionCode;
+    request[2] = (uint8_t)(startAddress >> 8);
+    request[3] = (uint8_t)(startAddress & 0xFF);
+    request[4] = (uint8_t)(registerCount >> 8);
+    request[5] = (uint8_t)(registerCount & 0xFF);
+    uint16_t crc = calcMasterCrc(request, 6);
+    request[6] = (uint8_t)(crc >> 8);
+    request[7] = (uint8_t)(crc & 0xFF);
+
+    setMasterTransmit(true);
+    (*mb_master_serialport).write(request, sizeof(request));
+    (*mb_master_serialport).flush();
+    delayMicroseconds(mb_master_t35);
+    setMasterTransmit(false);
+
+    uint8_t response[133];
+    uint16_t responseLen = 0;
+    unsigned long timeoutStart = millis();
+    unsigned long lastByteMicros = 0;
+
+    while ((millis() - timeoutStart) < 100)
+    {
+        while ((*mb_master_serialport).available() > 0 && responseLen < sizeof(response))
+        {
+            response[responseLen++] = (*mb_master_serialport).read();
+            lastByteMicros = micros();
+        }
+
+        if (responseLen >= 5 && lastByteMicros != 0 && (*mb_master_serialport).available() == 0)
+        {
+            if ((micros() - lastByteMicros) >= mb_master_t35)
+                break;
+        }
+    }
+
+    if (responseLen < 5)
+        return false;
+
+    if (response[0] != slaveId)
+        return false;
+
+    if (response[1] == (functionCode | 0x80))
+        return false;
+
+    if (response[1] != functionCode)
+        return false;
+
+    uint16_t responseCrc = ((uint16_t)response[responseLen - 2] << 8) | response[responseLen - 1];
+    if (responseCrc != calcMasterCrc(response, responseLen - 2))
+        return false;
+
+    uint8_t byteCount = response[2];
+    if (byteCount != registerCount * 2)
+        return false;
+
+    if (responseLen != (uint16_t)(byteCount + 5))
+        return false;
+
+    for (uint16_t i = 0; i < registerCount; i++)
+    {
+        dest[i] = ((uint16_t)response[3 + (i * 2)] << 8) | response[4 + (i * 2)];
+    }
+
+    return true;
+}
+
+bool mbmasterWriteSingleRegister(uint8_t slaveId, uint16_t startAddress, uint16_t value)
+{
+    if (mb_master_serialport == NULL)
+        return false;
+
+    while ((*mb_master_serialport).available() > 0)
+        (*mb_master_serialport).read();
+
+    uint8_t request[8];
+    request[0] = slaveId;
+    request[1] = 6;
+    request[2] = (uint8_t)(startAddress >> 8);
+    request[3] = (uint8_t)(startAddress & 0xFF);
+    request[4] = (uint8_t)(value >> 8);
+    request[5] = (uint8_t)(value & 0xFF);
+    uint16_t crc = calcMasterCrc(request, 6);
+    request[6] = (uint8_t)(crc >> 8);
+    request[7] = (uint8_t)(crc & 0xFF);
+
+    setMasterTransmit(true);
+    (*mb_master_serialport).write(request, sizeof(request));
+    (*mb_master_serialport).flush();
+    delayMicroseconds(mb_master_t35);
+    setMasterTransmit(false);
+
+    uint8_t response[8];
+    uint16_t responseLen = 0;
+    unsigned long timeoutStart = millis();
+    unsigned long lastByteMicros = 0;
+
+    while ((millis() - timeoutStart) < 100)
+    {
+        while ((*mb_master_serialport).available() > 0 && responseLen < sizeof(response))
+        {
+            response[responseLen++] = (*mb_master_serialport).read();
+            lastByteMicros = micros();
+        }
+
+        if (responseLen >= 8 && lastByteMicros != 0 && (*mb_master_serialport).available() == 0)
+        {
+            if ((micros() - lastByteMicros) >= mb_master_t35)
+                break;
+        }
+    }
+
+    if (responseLen != 8)
+        return false;
+
+    if (response[0] != slaveId || response[1] != 6)
+        return false;
+
+    uint16_t responseCrc = ((uint16_t)response[responseLen - 2] << 8) | response[responseLen - 1];
+    if (responseCrc != calcMasterCrc(response, responseLen - 2))
+        return false;
+
+    if (response[2] != request[2] || response[3] != request[3] || response[4] != request[4] || response[5] != request[5])
+        return false;
+
+    return true;
+}
+
+bool mbmasterWriteMultipleRegisters(uint8_t slaveId, uint16_t startAddress, uint16_t registerCount, uint16_t *values)
+{
+    if (mb_master_serialport == NULL || registerCount == 0 || registerCount > 64)
+        return false;
+
+    while ((*mb_master_serialport).available() > 0)
+        (*mb_master_serialport).read();
+
+    uint16_t requestLen = (uint16_t)(9 + (registerCount * 2));
+    uint8_t request[137];
+
+    request[0] = slaveId;
+    request[1] = 16;
+    request[2] = (uint8_t)(startAddress >> 8);
+    request[3] = (uint8_t)(startAddress & 0xFF);
+    request[4] = (uint8_t)(registerCount >> 8);
+    request[5] = (uint8_t)(registerCount & 0xFF);
+    request[6] = (uint8_t)(registerCount * 2);
+
+    for (uint16_t i = 0; i < registerCount; i++)
+    {
+        request[7 + (i * 2)] = (uint8_t)(values[i] >> 8);
+        request[8 + (i * 2)] = (uint8_t)(values[i] & 0xFF);
+    }
+
+    uint16_t crc = calcMasterCrc(request, requestLen - 2);
+    request[requestLen - 2] = (uint8_t)(crc >> 8);
+    request[requestLen - 1] = (uint8_t)(crc & 0xFF);
+
+    setMasterTransmit(true);
+    (*mb_master_serialport).write(request, requestLen);
+    (*mb_master_serialport).flush();
+    delayMicroseconds(mb_master_t35);
+    setMasterTransmit(false);
+
+    uint8_t response[8];
+    uint16_t responseLen = 0;
+    unsigned long timeoutStart = millis();
+    unsigned long lastByteMicros = 0;
+
+    while ((millis() - timeoutStart) < 100)
+    {
+        while ((*mb_master_serialport).available() > 0 && responseLen < sizeof(response))
+        {
+            response[responseLen++] = (*mb_master_serialport).read();
+            lastByteMicros = micros();
+        }
+
+        if (responseLen >= 8 && lastByteMicros != 0 && (*mb_master_serialport).available() == 0)
+        {
+            if ((micros() - lastByteMicros) >= mb_master_t35)
+                break;
+        }
+    }
+
+    if (responseLen != 8)
+        return false;
+
+    if (response[0] != slaveId || response[1] != 16)
+        return false;
+
+    uint16_t responseCrc = ((uint16_t)response[responseLen - 2] << 8) | response[responseLen - 1];
+    if (responseCrc != calcMasterCrc(response, responseLen - 2))
+        return false;
+
+    if (response[2] != request[2] || response[3] != request[3] || response[4] != request[4] || response[5] != request[5])
+        return false;
+
+    return true;
+}
+
+void modbusMasterTask()
+{
+    if (mb_master_serialport == NULL)
+        return;
+
+    if (mb_master_last_poll != 0 && (millis() - mb_master_last_poll) < MBSERIAL_MASTER_POLL_MS)
+        return;
+
+    mb_master_last_poll = millis();
+
+    if (MBSERIAL_MASTER_READ_FC == 3 || MBSERIAL_MASTER_READ_FC == 4)
+    {
+        uint16_t values[64];
+        if (mbmasterReadRegisters(MBSERIAL_MASTER_SLAVE, MBSERIAL_MASTER_READ_FC, MBSERIAL_MASTER_START, MBSERIAL_MASTER_COUNT, values))
+        {
+            for (uint16_t i = 0; i < MBSERIAL_MASTER_COUNT; i++)
+            {
+                uint16_t inputIndex = MBSERIAL_MASTER_MAP_START + i;
+                if (inputIndex >= MAX_ANALOG_INPUT)
+                    break;
+
+                if (int_input[inputIndex] != NULL)
+                    *int_input[inputIndex] = values[i];
+            }
+        }
+    }
+
+    if (MBSERIAL_MASTER_WRITE_FC == 6)
+    {
+        uint16_t outputIndex = MBSERIAL_MASTER_MAP_OUT_START;
+        uint16_t value = 0;
+
+        if (outputIndex < MAX_ANALOG_OUTPUT && int_output[outputIndex] != NULL)
+            value = *int_output[outputIndex];
+
+        mbmasterWriteSingleRegister(MBSERIAL_MASTER_SLAVE, MBSERIAL_MASTER_START, value);
+        return;
+    }
+
+    if (MBSERIAL_MASTER_WRITE_FC == 16)
+    {
+        uint16_t values[64];
+        for (uint16_t i = 0; i < MBSERIAL_MASTER_COUNT; i++)
+        {
+            uint16_t outputIndex = MBSERIAL_MASTER_MAP_OUT_START + i;
+            values[i] = 0;
+
+            if (outputIndex < MAX_ANALOG_OUTPUT && int_output[outputIndex] != NULL)
+                values[i] = *int_output[outputIndex];
+        }
+
+        mbmasterWriteMultipleRegisters(MBSERIAL_MASTER_SLAVE, MBSERIAL_MASTER_START, MBSERIAL_MASTER_COUNT, values);
+            return;
+    }
+
+    // Unsupported function code
+}
+#endif
 
 /*
 extern "C" int availableMemory(char *);
@@ -87,8 +442,8 @@ void setup()
     #endif
     
     // Configurar botón de seguridad
-    pinMode(SAFETY_BUTTON_PIN, INPUT_PULLUP);
-    plc_run_mode = digitalRead(SAFETY_BUTTON_PIN) == HIGH;  // HIGH = RUN, LOW = STOP
+    // pinMode(SAFETY_BUTTON_PIN, INPUT_PULLUP);
+    // plc_run_mode = digitalRead(SAFETY_BUTTON_PIN) == HIGH;  // HIGH = RUN, LOW = STOP
     
     config_init__();
     glueVars();
@@ -97,27 +452,7 @@ void setup()
         #ifdef MBSERIAL
 	        //Config Modbus Serial (port, speed, rs485 tx pin)
             #ifdef MBSERIAL_TXPIN
-                //Disable TX pin from OpenPLC hardware layer
-                for (int i = 0; i < NUM_DISCRETE_INPUT; i++)
-                {
-                    if (pinMask_DIN[i] == MBSERIAL_TXPIN)
-                        pinMask_DIN[i] = 255;
-                }
-                for (int i = 0; i < NUM_ANALOG_INPUT; i++)
-                {
-                    if (pinMask_AIN[i] == MBSERIAL_TXPIN)
-                        pinMask_AIN[i] = 255;
-                }
-                for (int i = 0; i < NUM_DISCRETE_OUTPUT; i++)
-                {
-                    if (pinMask_DOUT[i] == MBSERIAL_TXPIN)
-                        pinMask_DOUT[i] = 255;
-                }
-                for (int i = 0; i < NUM_ANALOG_OUTPUT; i++)
-                {
-                    if (pinMask_AOUT[i] == MBSERIAL_TXPIN)
-                        pinMask_AOUT[i] = 255;
-                }
+                disablePinFromMasks(MBSERIAL_TXPIN);
                 MBSERIAL_IFACE.begin(MBSERIAL_BAUD); //Initialize serial interface
                 mbconfig_serial_iface(&MBSERIAL_IFACE, MBSERIAL_BAUD, MBSERIAL_TXPIN);
             #else
@@ -127,6 +462,17 @@ void setup()
 
 	        //Set the Slave ID
 	        modbus.slaveid = MBSERIAL_SLAVE;
+        #endif
+
+        #ifdef MBSERIAL_MASTER
+            #ifdef MBSERIAL_MASTER_TXPIN
+                disablePinFromMasks(MBSERIAL_MASTER_TXPIN);
+                MBSERIAL_MASTER_IFACE.begin(MBSERIAL_MASTER_BAUD);
+                mbconfig_master_serial_iface(&MBSERIAL_MASTER_IFACE, MBSERIAL_MASTER_BAUD, MBSERIAL_MASTER_TXPIN);
+            #else
+                MBSERIAL_MASTER_IFACE.begin(MBSERIAL_MASTER_BAUD);
+                mbconfig_master_serial_iface(&MBSERIAL_MASTER_IFACE, MBSERIAL_MASTER_BAUD, -1);
+            #endif
         #endif
 
         #ifdef MBTCP
@@ -319,24 +665,24 @@ void modbusTask()
 #endif
 
 // Función para leer el botón de seguridad con debounce
-void readSafetyButton()
-{
-    bool current_button = digitalRead(SAFETY_BUTTON_PIN);
+// void readSafetyButton()
+// {
+//     bool current_button = digitalRead(SAFETY_BUTTON_PIN);
     
-    // Detectar cambio de estado con debounce
-    if (current_button != last_button_state)
-    {
-        last_debounce_time = millis();
-    }
+//     // Detectar cambio de estado con debounce
+//     if (current_button != last_button_state)
+//     {
+//         last_debounce_time = millis();
+//     }
     
-    if ((millis() - last_debounce_time) > debounce_delay)
-    {
-        // El estado del botón es estable
-        plc_run_mode = (current_button == HIGH);  // HIGH = RUN, LOW = STOP
-    }
+//     if ((millis() - last_debounce_time) > debounce_delay)
+//     {
+//         // El estado del botón es estable
+//         plc_run_mode = (current_button == HIGH);  // HIGH = RUN, LOW = STOP
+//     }
     
-    last_button_state = current_button;
-}
+//     last_button_state = current_button;
+// }
 
 // Función para forzar todas las salidas a 0 en modo STOP
 void forceSafeOutputs()
@@ -363,9 +709,13 @@ void forceSafeOutputs()
 void plcCycleTask()
 {
     updateInputBuffers();
+
+    #ifdef MBSERIAL_MASTER
+        modbusMasterTask();
+    #endif
     
     // Leer estado del botón de seguridad
-    readSafetyButton();
+    // readSafetyButton();
     
     if (plc_run_mode)
     {

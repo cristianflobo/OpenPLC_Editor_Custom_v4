@@ -1,0 +1,427 @@
+import { INPUT_STYLES } from '@data/constants/device-styles'
+import { rtuSelectors } from '@hooks/use-store-selectors'
+import { InputWithRef, Label, Select, SelectContent, SelectItem, SelectTrigger } from '@root/renderer/components/_atoms'
+import { useOpenPLCStore } from '@root/renderer/store'
+import { cn } from '@root/utils'
+import { memo, useEffect, useMemo, useState } from 'react'
+
+type RTUMasterConfig = {
+  enabled: boolean
+  rtuInterface: 'Serial' | 'Serial1' | 'Serial2' | 'Serial3'
+  rtuBaudRate: '9600' | '14400' | '19200' | '38400' | '57600' | '115200'
+  rtuRS485ENPin: string | null
+  slaveId: number | null
+  functionCode: '3' | '4' | '6' | '16' | '3+6' | '3+16' | '4+6' | '4+16'
+  startAddress: number
+  registerCount: number
+  pollIntervalMs: number
+  mapToInputStart: number
+  mapFromOutputStart: number
+}
+
+type RTUMasterField = Exclude<keyof RTUMasterConfig, 'enabled' | 'rtuInterface' | 'rtuBaudRate' | 'rtuRS485ENPin'>
+
+type RTUConfig = {
+  rtuInterface: 'Serial' | 'Serial1' | 'Serial2' | 'Serial3'
+}
+
+type CommunicationPreferences = {
+  enabledRTU: boolean
+}
+
+const ModbusRTUMasterComponent = memo(function ({ isModbusRTUMasterEnabled }: { isModbusRTUMasterEnabled: boolean }) {
+  const deviceBoard = useOpenPLCStore((state) => state.deviceDefinitions.configuration.deviceBoard)
+  const communicationPort = useOpenPLCStore((state) => state.deviceDefinitions.configuration.communicationPort)
+  const runtimeIpAddress = useOpenPLCStore((state) => state.deviceDefinitions.configuration.runtimeIpAddress)
+  const communicationConfiguration = useOpenPLCStore(
+    (state) => state.deviceDefinitions.configuration.communicationConfiguration,
+  )
+  const availableRTUInterfaces = rtuSelectors.useAvailableRTUInterfaces()
+  const availableRTUBaudRates = rtuSelectors.useAvailableRTUBaudRates()
+  const modbusRTUMaster = communicationConfiguration.modbusRTUMaster as RTUMasterConfig
+  const modbusRTU = communicationConfiguration.modbusRTU as RTUConfig
+  const communicationPreferences = communicationConfiguration.communicationPreferences as CommunicationPreferences
+  const setDeviceDefinitions = useOpenPLCStore((state) => state.deviceActions.setDeviceDefinitions)
+  const [enableRS485ENPin, setEnableRS485ENPin] = useState(modbusRTUMaster.rtuRS485ENPin !== null)
+  const isReadFunction =
+    modbusRTUMaster.functionCode === '3' ||
+    modbusRTUMaster.functionCode === '4' ||
+    modbusRTUMaster.functionCode === '3+6' ||
+    modbusRTUMaster.functionCode === '3+16' ||
+    modbusRTUMaster.functionCode === '4+6' ||
+    modbusRTUMaster.functionCode === '4+16'
+  const isWriteFunction =
+    modbusRTUMaster.functionCode === '6' ||
+    modbusRTUMaster.functionCode === '16' ||
+    modbusRTUMaster.functionCode === '3+6' ||
+    modbusRTUMaster.functionCode === '3+16' ||
+    modbusRTUMaster.functionCode === '4+6' ||
+    modbusRTUMaster.functionCode === '4+16'
+  const isSingleWrite =
+    modbusRTUMaster.functionCode === '6' ||
+    modbusRTUMaster.functionCode === '3+6' ||
+    modbusRTUMaster.functionCode === '4+6'
+
+  const isRTUSlaveEnabled = communicationPreferences.enabledRTU
+  const isSameInterface = isRTUSlaveEnabled && modbusRTU.rtuInterface === modbusRTUMaster.rtuInterface
+
+  const availableMasterInterfaces = useMemo(() => {
+    if (!isRTUSlaveEnabled) return availableRTUInterfaces
+    return availableRTUInterfaces.filter((iface) => iface !== modbusRTU.rtuInterface)
+  }, [availableRTUInterfaces, isRTUSlaveEnabled, modbusRTU.rtuInterface])
+
+  const updateMasterConfig = <T extends keyof RTUMasterConfig>(field: T, value: RTUMasterConfig[T]) => {
+    setDeviceDefinitions({
+      configuration: {
+        deviceBoard,
+        communicationPort,
+        runtimeIpAddress,
+        communicationConfiguration: {
+          ...communicationConfiguration,
+          modbusRTUMaster: { ...modbusRTUMaster, [field]: value },
+        },
+      },
+    })
+  }
+
+  useEffect(() => {
+    if (!isSameInterface) return
+    const fallbackInterface = availableMasterInterfaces[0]
+    if (!fallbackInterface) return
+    updateMasterConfig('rtuInterface', fallbackInterface as RTUMasterConfig['rtuInterface'])
+  }, [isSameInterface, availableMasterInterfaces])
+
+  useEffect(() => {
+    if (!isSingleWrite) return
+    if (modbusRTUMaster.registerCount === 1) return
+    updateMasterConfig('registerCount', 1)
+  }, [isSingleWrite, modbusRTUMaster.registerCount])
+
+  const updateNumber = (field: RTUMasterField, value: string) => {
+    const parsed = Number.parseInt(value, 10)
+    if (!Number.isNaN(parsed)) {
+      updateMasterConfig(field, parsed as RTUMasterConfig[typeof field])
+    }
+  }
+
+  const toggleEnableRS485ENPin = () => {
+    const nextEnabled = !enableRS485ENPin
+    setEnableRS485ENPin(nextEnabled)
+    if (!nextEnabled) {
+      updateMasterConfig('rtuRS485ENPin', null)
+    }
+  }
+
+  return (
+    <div
+      id='modbus-rtu-master-form-config-container'
+      className={cn('flex gap-6', !isModbusRTUMasterEnabled && 'hidden')}
+    >
+      <div id='modbus-rtu-master-form-config-left-slot' className='flex flex-1 flex-col gap-4'>
+        <div id='modbus-rtu-master-interface-container' className='flex w-full flex-1 items-center justify-start gap-1'>
+          <Label
+            htmlFor='modbus-rtu-master-interface'
+            className='whitespace-pre text-xs text-neutral-950 dark:text-white'
+          >
+            Interface
+          </Label>
+          <Select
+            aria-label='modbus-rtu-master-interface-select'
+            value={modbusRTUMaster.rtuInterface}
+            onValueChange={(value) => updateMasterConfig('rtuInterface', value as RTUMasterConfig['rtuInterface'])}
+          >
+            <SelectTrigger
+              placeholder='Select interface'
+              withIndicator
+              className='flex h-[30px] w-full items-center justify-between gap-1 rounded-md border border-neutral-300 bg-white px-2 py-1 font-caption text-cp-sm font-medium text-neutral-850 outline-none data-[state=open]:border-brand-medium-dark dark:border-neutral-850 dark:bg-neutral-950 dark:text-neutral-300'
+            />
+            <SelectContent className='h-fit w-[--radix-select-trigger-width] overflow-y-auto rounded-lg border border-neutral-300 bg-white outline-none drop-shadow-lg dark:border-brand-medium-dark dark:bg-neutral-950'>
+              {availableMasterInterfaces.map((rtuInterface) => (
+                <SelectItem
+                  key={rtuInterface}
+                  value={rtuInterface}
+                  className='flex w-full cursor-pointer items-center justify-start px-2 py-1 outline-none hover:bg-neutral-100 dark:hover:bg-neutral-800'
+                >
+                  <span className='text-start font-caption text-xs font-normal text-neutral-700 dark:text-neutral-100'>
+                    {rtuInterface}
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        {isSameInterface && (
+          <p className='text-[11px] text-amber-600 dark:text-amber-400'>
+            RTU Master y RTU Slave no pueden usar la misma interfaz serial al mismo tiempo.
+          </p>
+        )}
+
+        <div id='modbus-rtu-master-slave-id-container' className='flex w-full flex-1 items-center justify-start gap-1'>
+          <Label htmlFor='rtuMasterSlaveId' className='whitespace-pre text-xs text-neutral-950 dark:text-white'>
+            Target Slave ID
+          </Label>
+          <InputWithRef
+            id='rtuMasterSlaveId'
+            placeholder='1-247'
+            type='number'
+            min={1}
+            max={247}
+            value={modbusRTUMaster.slaveId ?? ''}
+            onChange={(e) => {
+              const value = e.target.value
+              if (value === '') {
+                updateMasterConfig('slaveId', null)
+                return
+              }
+              const parsed = Number.parseInt(value, 10)
+              if (!Number.isNaN(parsed)) {
+                updateMasterConfig('slaveId', parsed)
+              }
+            }}
+            className={INPUT_STYLES.default}
+          />
+        </div>
+
+        <div
+          id='modbus-rtu-master-function-code-container'
+          className='flex w-full flex-1 items-center justify-start gap-1'
+        >
+          <Label className='whitespace-pre text-xs text-neutral-950 dark:text-white'>Function</Label>
+          <Select
+            aria-label='modbus-rtu-master-function-select'
+            value={modbusRTUMaster.functionCode}
+            onValueChange={(value) => updateMasterConfig('functionCode', value as RTUMasterConfig['functionCode'])}
+          >
+            <SelectTrigger
+              placeholder='Select function code'
+              withIndicator
+              className='flex h-[30px] w-full items-center justify-between gap-1 rounded-md border border-neutral-300 bg-white px-2 py-1 font-caption text-cp-sm font-medium text-neutral-850 outline-none data-[state=open]:border-brand-medium-dark dark:border-neutral-850 dark:bg-neutral-950 dark:text-neutral-300'
+            />
+            <SelectContent className='h-fit w-[--radix-select-trigger-width] overflow-y-auto rounded-lg border border-neutral-300 bg-white outline-none drop-shadow-lg dark:border-brand-medium-dark dark:bg-neutral-950'>
+              <SelectItem
+                value='3'
+                className='flex w-full cursor-pointer items-center justify-start px-2 py-1 outline-none hover:bg-neutral-100 dark:hover:bg-neutral-800'
+              >
+                <span className='text-start font-caption text-xs font-normal text-neutral-700 dark:text-neutral-100'>
+                  FC03 - Holding Registers
+                </span>
+              </SelectItem>
+              <SelectItem
+                value='4'
+                className='flex w-full cursor-pointer items-center justify-start px-2 py-1 outline-none hover:bg-neutral-100 dark:hover:bg-neutral-800'
+              >
+                <span className='text-start font-caption text-xs font-normal text-neutral-700 dark:text-neutral-100'>
+                  FC04 - Input Registers
+                </span>
+              </SelectItem>
+              <SelectItem
+                value='6'
+                className='flex w-full cursor-pointer items-center justify-start px-2 py-1 outline-none hover:bg-neutral-100 dark:hover:bg-neutral-800'
+              >
+                <span className='text-start font-caption text-xs font-normal text-neutral-700 dark:text-neutral-100'>
+                  FC06 - Write Single Register
+                </span>
+              </SelectItem>
+              <SelectItem
+                value='16'
+                className='flex w-full cursor-pointer items-center justify-start px-2 py-1 outline-none hover:bg-neutral-100 dark:hover:bg-neutral-800'
+              >
+                <span className='text-start font-caption text-xs font-normal text-neutral-700 dark:text-neutral-100'>
+                  FC16 - Write Multiple Registers
+                </span>
+              </SelectItem>
+              <SelectItem
+                value='3+16'
+                className='flex w-full cursor-pointer items-center justify-start px-2 py-1 outline-none hover:bg-neutral-100 dark:hover:bg-neutral-800'
+              >
+                <span className='text-start font-caption text-xs font-normal text-neutral-700 dark:text-neutral-100'>
+                  FC03 + FC16 - Read + Write
+                </span>
+              </SelectItem>
+              <SelectItem
+                value='4+16'
+                className='flex w-full cursor-pointer items-center justify-start px-2 py-1 outline-none hover:bg-neutral-100 dark:hover:bg-neutral-800'
+              >
+                <span className='text-start font-caption text-xs font-normal text-neutral-700 dark:text-neutral-100'>
+                  FC04 + FC16 - Read + Write
+                </span>
+              </SelectItem>
+              <SelectItem
+                value='3+6'
+                className='flex w-full cursor-pointer items-center justify-start px-2 py-1 outline-none hover:bg-neutral-100 dark:hover:bg-neutral-800'
+              >
+                <span className='text-start font-caption text-xs font-normal text-neutral-700 dark:text-neutral-100'>
+                  FC03 + FC06 - Read + Write
+                </span>
+              </SelectItem>
+              <SelectItem
+                value='4+6'
+                className='flex w-full cursor-pointer items-center justify-start px-2 py-1 outline-none hover:bg-neutral-100 dark:hover:bg-neutral-800'
+              >
+                <span className='text-start font-caption text-xs font-normal text-neutral-700 dark:text-neutral-100'>
+                  FC04 + FC06 - Read + Write
+                </span>
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div
+          id='modbus-rtu-master-start-address-container'
+          className='flex w-full flex-1 items-center justify-start gap-1'
+        >
+          <Label htmlFor='rtuMasterStartAddress' className='whitespace-pre text-xs text-neutral-950 dark:text-white'>
+            Start Address
+          </Label>
+          <InputWithRef
+            id='rtuMasterStartAddress'
+            type='number'
+            min={0}
+            max={65535}
+            value={modbusRTUMaster.startAddress}
+            onChange={(e) => updateNumber('startAddress', e.target.value)}
+            className={INPUT_STYLES.default}
+          />
+        </div>
+      </div>
+
+      <div id='modbus-rtu-master-form-config-right-slot' className='flex flex-1 flex-col gap-4'>
+        <div id='modbus-rtu-master-baudrate-container' className='flex w-full flex-1 items-center justify-start gap-1'>
+          <Label
+            htmlFor='modbus-rtu-master-baudrate'
+            className='whitespace-pre text-xs text-neutral-950 dark:text-white'
+          >
+            Baud Rate
+          </Label>
+          <Select
+            aria-label='modbus-rtu-master-baudrate-select'
+            value={modbusRTUMaster.rtuBaudRate}
+            onValueChange={(value) => updateMasterConfig('rtuBaudRate', value as RTUMasterConfig['rtuBaudRate'])}
+          >
+            <SelectTrigger
+              placeholder='Select baud rate'
+              withIndicator
+              className='flex h-[30px] w-full items-center justify-between gap-1 rounded-md border border-neutral-300 bg-white px-2 py-1 font-caption text-cp-sm font-medium text-neutral-850 outline-none data-[state=open]:border-brand-medium-dark dark:border-neutral-850 dark:bg-neutral-950 dark:text-neutral-300'
+            />
+            <SelectContent className='h-fit w-[--radix-select-trigger-width] overflow-y-auto rounded-lg border border-neutral-300 bg-white outline-none drop-shadow-lg dark:border-brand-medium-dark dark:bg-neutral-950'>
+              {availableRTUBaudRates.map((rtuBaudRate) => (
+                <SelectItem
+                  key={rtuBaudRate}
+                  value={rtuBaudRate}
+                  className='flex w-full cursor-pointer items-center justify-start px-2 py-1 outline-none hover:bg-neutral-100 dark:hover:bg-neutral-800'
+                >
+                  <span className='text-start font-caption text-xs font-normal text-neutral-700 dark:text-neutral-100'>
+                    {rtuBaudRate}
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div
+          id='modbus-rtu-master-register-count-container'
+          className='flex w-full flex-1 items-center justify-start gap-1'
+        >
+          <Label htmlFor='rtuMasterRegisterCount' className='whitespace-pre text-xs text-neutral-950 dark:text-white'>
+            Register Count
+          </Label>
+          <InputWithRef
+            id='rtuMasterRegisterCount'
+            type='number'
+            min={1}
+            max={64}
+            value={modbusRTUMaster.registerCount}
+            disabled={isSingleWrite}
+            onChange={(e) => updateNumber('registerCount', e.target.value)}
+            className={INPUT_STYLES.default}
+          />
+        </div>
+
+        <div
+          id='modbus-rtu-master-poll-interval-container'
+          className='flex w-full flex-1 items-center justify-start gap-1'
+        >
+          <Label htmlFor='rtuMasterPollIntervalMs' className='whitespace-pre text-xs text-neutral-950 dark:text-white'>
+            Poll (ms)
+          </Label>
+          <InputWithRef
+            id='rtuMasterPollIntervalMs'
+            type='number'
+            min={20}
+            max={60000}
+            value={modbusRTUMaster.pollIntervalMs}
+            onChange={(e) => updateNumber('pollIntervalMs', e.target.value)}
+            className={INPUT_STYLES.default}
+          />
+        </div>
+
+        <div id='modbus-rtu-master-map-start-container' className='flex w-full flex-1 items-center justify-start gap-1'>
+          <Label htmlFor='rtuMasterMapToInputStart' className='whitespace-pre text-xs text-neutral-950 dark:text-white'>
+            Map to %IW Start
+          </Label>
+          <InputWithRef
+            id='rtuMasterMapToInputStart'
+            type='number'
+            min={0}
+            disabled={!isReadFunction}
+            value={modbusRTUMaster.mapToInputStart}
+            onChange={(e) => updateNumber('mapToInputStart', e.target.value)}
+            className={INPUT_STYLES.default}
+          />
+        </div>
+
+        <div
+          id='modbus-rtu-master-map-out-start-container'
+          className='flex w-full flex-1 items-center justify-start gap-1'
+        >
+          <Label
+            htmlFor='rtuMasterMapFromOutputStart'
+            className='whitespace-pre text-xs text-neutral-950 dark:text-white'
+          >
+            Map from %QW Start
+          </Label>
+          <InputWithRef
+            id='rtuMasterMapFromOutputStart'
+            type='number'
+            min={0}
+            disabled={!isWriteFunction}
+            value={modbusRTUMaster.mapFromOutputStart}
+            onChange={(e) => updateNumber('mapFromOutputStart', e.target.value)}
+            className={INPUT_STYLES.default}
+          />
+        </div>
+
+        <div
+          id='modbus-rtu-master-rs485en-pin-container'
+          className='flex w-full flex-1 items-center justify-start gap-1'
+        >
+          <input
+            id='enable-rtu-master-rs485en-pin-checkbox'
+            type='checkbox'
+            className='h-4 w-4'
+            checked={enableRS485ENPin}
+            onChange={toggleEnableRS485ENPin}
+          />
+          <Label
+            htmlFor='enable-rtu-master-rs485en-pin-checkbox'
+            className={cn('whitespace-pre text-xs text-neutral-950 dark:text-white', !enableRS485ENPin && 'opacity-50')}
+          >
+            RS485 EN Pin
+          </Label>
+          {enableRS485ENPin && (
+            <InputWithRef
+              id='rtuMasterRS485ENPin'
+              placeholder='RS485 EN Pin'
+              value={modbusRTUMaster.rtuRS485ENPin ?? ''}
+              onChange={(e) => updateMasterConfig('rtuRS485ENPin', e.target.value === '' ? null : e.target.value)}
+              className={INPUT_STYLES.default}
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  )
+})
+
+export { ModbusRTUMasterComponent }

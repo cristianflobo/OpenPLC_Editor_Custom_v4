@@ -10,8 +10,9 @@ import {
   SelectItem,
   SelectTrigger,
 } from '@root/renderer/components/_atoms'
+import { useOpenPLCStore } from '@root/renderer/store'
 import { cn } from '@root/utils'
-import { memo, useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { z } from 'zod'
 
@@ -21,6 +22,11 @@ const rtuConfigSchema = z.object({
 })
 
 type RTUConfigSchema = z.infer<typeof rtuConfigSchema>
+
+type RTUMasterConfig = {
+  enabled: boolean
+  rtuInterface: 'Serial' | 'Serial1' | 'Serial2' | 'Serial3'
+}
 
 const ModbusRTUComponent = memo(function ({ isModbusRTUEnabled }: { isModbusRTUEnabled: boolean }) {
   const {
@@ -34,6 +40,9 @@ const ModbusRTUComponent = memo(function ({ isModbusRTUEnabled }: { isModbusRTUE
   const availableRTUInterfaces = rtuSelectors.useAvailableRTUInterfaces()
   const availableRTUBaudRates = rtuSelectors.useAvailableRTUBaudRates()
   const modbusRTU = rtuSelectors.useModbusRTU()
+  const modbusRTUMaster = useOpenPLCStore(
+    (state) => state.deviceDefinitions.configuration.communicationConfiguration.modbusRTUMaster as RTUMasterConfig,
+  )
   const setRTUConfig = rtuSelectors.useSetRTUConfig()
 
   const [enableRS485ENPin, setEnableRS485ENPin] = useState(false)
@@ -43,6 +52,13 @@ const ModbusRTUComponent = memo(function ({ isModbusRTUEnabled }: { isModbusRTUE
 
   const [rtuBaudRateIsOpen, setRTUBaudRateIsOpen] = useState(false)
   const rtuBaudRateRef = useRef<HTMLDivElement>(null)
+
+  const isRTUMasterEnabled = modbusRTUMaster.enabled
+  const isSameInterface = isRTUMasterEnabled && modbusRTUMaster.rtuInterface === modbusRTU.rtuInterface
+  const availableSlaveInterfaces = useMemo(() => {
+    if (!isRTUMasterEnabled) return availableRTUInterfaces
+    return availableRTUInterfaces.filter((iface) => iface !== modbusRTUMaster.rtuInterface)
+  }, [availableRTUInterfaces, isRTUMasterEnabled, modbusRTUMaster.rtuInterface])
 
   const scrollToSelectedOption = (selectRef: React.RefObject<HTMLDivElement>, selectIsOpen: boolean) => {
     if (!selectIsOpen) return
@@ -71,6 +87,16 @@ const ModbusRTUComponent = memo(function ({ isModbusRTUEnabled }: { isModbusRTUE
     scrollToSelectedOption(rtuInterfaceRef, rtuInterfaceIsOpen)
   }, [rtuInterfaceIsOpen])
 
+  useEffect(() => {
+    if (!isSameInterface) return
+    const fallbackInterface = availableSlaveInterfaces[0]
+    if (!fallbackInterface) return
+    setRTUConfig({
+      rtuConfig: 'rtuInterface',
+      value: fallbackInterface as 'Serial' | 'Serial1' | 'Serial2' | 'Serial3',
+    })
+  }, [isSameInterface, availableSlaveInterfaces])
+
   const toggleEnableRS485ENPin = () => {
     setEnableRS485ENPin((prev) => !prev)
     if (enableRS485ENPin) {
@@ -88,7 +114,7 @@ const ModbusRTUComponent = memo(function ({ isModbusRTUEnabled }: { isModbusRTUE
       value: value as '9600' | '14400' | '19200' | '38400' | '57600' | '115200',
     })
   }
-  console.log(' modbusRTU.rtuSlaveId:', modbusRTU.rtuSlaveId)
+
   return (
     <div id='modbus-rtu-form-config-container' className={cn('flex gap-6', !isModbusRTUEnabled && 'hidden')}>
       <div id='modbus-rtu-form-config-left-slot' className='flex flex-1 flex-col gap-4'>
@@ -116,7 +142,7 @@ const ModbusRTUComponent = memo(function ({ isModbusRTUEnabled }: { isModbusRTUE
               viewportRef={rtuInterfaceRef}
               className='h-fit w-[--radix-select-trigger-width] overflow-y-auto rounded-lg border border-neutral-300 bg-white outline-none drop-shadow-lg dark:border-brand-medium-dark dark:bg-neutral-950'
             >
-              {availableRTUInterfaces.map((rtuInterface) => {
+              {availableSlaveInterfaces.map((rtuInterface) => {
                 return (
                   <SelectItem
                     key={rtuInterface}
@@ -135,6 +161,11 @@ const ModbusRTUComponent = memo(function ({ isModbusRTUEnabled }: { isModbusRTUE
             </SelectContent>
           </Select>
         </div>
+        {isSameInterface && (
+          <p className='text-[11px] text-amber-600 dark:text-amber-400'>
+            RTU Slave y RTU Master no pueden usar la misma interfaz serial al mismo tiempo.
+          </p>
+        )}
         <div id='modbus-rtu-slave-id-container' className='flex w-full flex-1 items-center justify-start gap-1'>
           <Label
             id='modbus-rtu-slave-id-input-label'

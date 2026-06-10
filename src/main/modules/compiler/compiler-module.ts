@@ -758,9 +758,26 @@ class CompilerModule {
 
     // === Files contents that we need ===
     const halsFileContent = await CompilerModule.readJSONFile<HalsFile>(this.halsFilePath)
+    const deviceConfiguration = await CompilerModule.readJSONFile<DeviceConfiguration>(devicesConfigurationFilePath)
     const {
-      communicationConfiguration: { modbusRTU, modbusTCP, communicationPreferences },
-    } = await CompilerModule.readJSONFile<DeviceConfiguration>(devicesConfigurationFilePath)
+      communicationConfiguration: { modbusRTU, modbusRTUMaster, modbusTCP, communicationPreferences },
+    } = deviceConfiguration as DeviceConfiguration & {
+      communicationConfiguration: DeviceConfiguration['communicationConfiguration'] & {
+        modbusRTUMaster: {
+          enabled: boolean
+          rtuInterface: 'Serial' | 'Serial1' | 'Serial2' | 'Serial3'
+          rtuBaudRate: '9600' | '14400' | '19200' | '38400' | '57600' | '115200'
+          rtuRS485ENPin: string | null
+          slaveId: number | null
+          functionCode: '3' | '4' | '6' | '16' | '3+6' | '3+16' | '4+6' | '4+16'
+          startAddress: number
+          registerCount: number
+          pollIntervalMs: number
+          mapToInputStart: number
+          mapFromOutputStart: number
+        }
+      }
+    }
     const devicePinMapping = await CompilerModule.readJSONFile<DevicePin[]>(devicesPinMappingFilePath)
     const stProgramFileContent = await readFile(stProgramFilePath, 'utf-8')
 
@@ -816,6 +833,43 @@ class CompilerModule {
     DEFINES_CONTENT += `#define MBSERIAL_BAUD ${modbusRTU.rtuBaudRate}\n`
     if (modbusRTU.rtuSlaveId !== null) DEFINES_CONTENT += `#define MBSERIAL_SLAVE ${modbusRTU.rtuSlaveId}\n`
     if (modbusRTU.rtuRS485ENPin !== null) DEFINES_CONTENT += `#define MBSERIAL_TXPIN ${modbusRTU.rtuRS485ENPin}\n`
+    if (modbusRTUMaster.enabled && modbusRTUMaster.slaveId !== null) {
+      const readFunctionCode =
+        modbusRTUMaster.functionCode === '3' ||
+        modbusRTUMaster.functionCode === '3+6' ||
+        modbusRTUMaster.functionCode === '3+16'
+          ? '3'
+          : modbusRTUMaster.functionCode === '4' ||
+              modbusRTUMaster.functionCode === '4+6' ||
+              modbusRTUMaster.functionCode === '4+16'
+            ? '4'
+            : null
+      const writeFunctionCode =
+        modbusRTUMaster.functionCode === '6' ||
+        modbusRTUMaster.functionCode === '3+6' ||
+        modbusRTUMaster.functionCode === '4+6'
+          ? '6'
+          : modbusRTUMaster.functionCode === '16' ||
+              modbusRTUMaster.functionCode === '3+16' ||
+              modbusRTUMaster.functionCode === '4+16'
+            ? '16'
+            : null
+
+      DEFINES_CONTENT += `#define MBSERIAL_MASTER_IFACE ${modbusRTUMaster.rtuInterface}\n`
+      DEFINES_CONTENT += `#define MBSERIAL_MASTER_BAUD ${modbusRTUMaster.rtuBaudRate}\n`
+      DEFINES_CONTENT += `#define MBSERIAL_MASTER_SLAVE ${modbusRTUMaster.slaveId}\n`
+      DEFINES_CONTENT += `#define MBSERIAL_MASTER_FC ${readFunctionCode ?? writeFunctionCode ?? '3'}\n`
+      DEFINES_CONTENT += `#define MBSERIAL_MASTER_READ_FC ${readFunctionCode ?? '0'}\n`
+      DEFINES_CONTENT += `#define MBSERIAL_MASTER_WRITE_FC ${writeFunctionCode ?? '0'}\n`
+      DEFINES_CONTENT += `#define MBSERIAL_MASTER_START ${modbusRTUMaster.startAddress}\n`
+      DEFINES_CONTENT += `#define MBSERIAL_MASTER_COUNT ${modbusRTUMaster.registerCount}\n`
+      DEFINES_CONTENT += `#define MBSERIAL_MASTER_POLL_MS ${modbusRTUMaster.pollIntervalMs}\n`
+      DEFINES_CONTENT += `#define MBSERIAL_MASTER_MAP_START ${modbusRTUMaster.mapToInputStart}\n`
+      DEFINES_CONTENT += `#define MBSERIAL_MASTER_MAP_OUT_START ${modbusRTUMaster.mapFromOutputStart}\n`
+      if (modbusRTUMaster.rtuRS485ENPin !== null) {
+        DEFINES_CONTENT += `#define MBSERIAL_MASTER_TXPIN ${modbusRTUMaster.rtuRS485ENPin}\n`
+      }
+    }
     if (modbusTCP.tcpMacAddress !== null)
       DEFINES_CONTENT += `#define MBTCP_MAC ${FormatMacAddress(modbusTCP.tcpMacAddress)}\n`
     // OBS: This is giving us an empty string and this is being printed as a space
@@ -830,6 +884,11 @@ class CompilerModule {
 
     if (communicationPreferences.enabledRTU) {
       DEFINES_CONTENT += '#define MBSERIAL\n'
+      DEFINES_CONTENT += '#define MODBUS_ENABLED\n'
+    }
+
+    if (modbusRTUMaster.enabled && modbusRTUMaster.slaveId !== null) {
+      DEFINES_CONTENT += '#define MBSERIAL_MASTER\n'
       DEFINES_CONTENT += '#define MODBUS_ENABLED\n'
     }
 
@@ -1187,7 +1246,7 @@ class CompilerModule {
           await addFilesToZip(fullPath, zipFolder, zipPath)
         } else {
           const fileContent = await fs.readFile(fullPath)
-          zipFolder.file(zipPath, fileContent)
+          zipFolder.file(zipPath, new Uint8Array(fileContent))
         }
       }
     }

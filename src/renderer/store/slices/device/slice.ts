@@ -1,6 +1,8 @@
-import { DeviceConfiguration, DevicePin } from '@root/types/PLC/devices'
+/* eslint-disable simple-import-sort/imports */
 import { produce } from 'immer'
-import { StateCreator } from 'zustand'
+import type { StateCreator } from 'zustand'
+
+import { deviceConfigurationSchema, type DeviceConfiguration, type DevicePin } from '@root/types/PLC/devices'
 
 import { defaultDeviceConfiguration } from './data'
 import type { DeviceSlice, TimingStats } from './types'
@@ -61,7 +63,11 @@ const createDeviceSlice: StateCreator<DeviceSlice, [], [], DeviceSlice> = (setSt
       setState(
         produce(({ deviceDefinitions }: DeviceSlice) => {
           if (configuration) {
-            deviceDefinitions.configuration = mergeDeviceConfigWithDefaults(configuration, defaultDeviceConfiguration)
+            const normalizedConfiguration = deviceConfigurationSchema.parse(configuration)
+            deviceDefinitions.configuration = mergeDeviceConfigWithDefaults(
+              normalizedConfiguration,
+              defaultDeviceConfiguration,
+            )
           }
           if (pinMapping) {
             deviceDefinitions.pinMapping.pins = pinMapping || []
@@ -513,23 +519,56 @@ const createDeviceSlice: StateCreator<DeviceSlice, [], [], DeviceSlice> = (setSt
 })
 
 function mergeDeviceConfigWithDefaults(
-  provided: Partial<DeviceConfiguration>,
+  provided: DeviceConfiguration,
   defaults: DeviceConfiguration,
 ): DeviceConfiguration {
+  type RTUMasterConfig = {
+    enabled: boolean
+    rtuInterface: 'Serial' | 'Serial1' | 'Serial2' | 'Serial3'
+    rtuBaudRate: '9600' | '14400' | '19200' | '38400' | '57600' | '115200'
+    rtuRS485ENPin: string | null
+    slaveId: number | null
+    functionCode: '3' | '4' | '6' | '16' | '3+6' | '3+16' | '4+6' | '4+16'
+    startAddress: number
+    registerCount: number
+    pollIntervalMs: number
+    mapToInputStart: number
+    mapFromOutputStart: number
+  }
+
+  const providedCommunicationConfiguration = provided.communicationConfiguration
+  const providedRTUMaster = (providedCommunicationConfiguration as unknown as { modbusRTUMaster?: RTUMasterConfig })
+    .modbusRTUMaster
+  const defaultRTUMaster = (defaults.communicationConfiguration as unknown as { modbusRTUMaster: RTUMasterConfig })
+    .modbusRTUMaster
+
   return {
     deviceBoard: provided.deviceBoard || defaults.deviceBoard,
     communicationPort: provided.communicationPort ?? defaults.communicationPort,
     communicationConfiguration: {
       modbusRTU: {
         ...defaults.communicationConfiguration.modbusRTU,
-        ...(provided.communicationConfiguration?.modbusRTU || {}),
+        ...providedCommunicationConfiguration.modbusRTU,
       },
-      modbusTCP: provided.communicationConfiguration?.modbusTCP?.tcpInterface
-        ? provided.communicationConfiguration.modbusTCP
+      modbusRTUMaster: {
+        enabled: providedRTUMaster?.enabled ?? defaultRTUMaster.enabled,
+        rtuInterface: providedRTUMaster?.rtuInterface ?? defaultRTUMaster.rtuInterface,
+        rtuBaudRate: providedRTUMaster?.rtuBaudRate ?? defaultRTUMaster.rtuBaudRate,
+        rtuRS485ENPin: providedRTUMaster?.rtuRS485ENPin ?? defaultRTUMaster.rtuRS485ENPin,
+        slaveId: providedRTUMaster?.slaveId ?? defaultRTUMaster.slaveId,
+        functionCode: providedRTUMaster?.functionCode ?? defaultRTUMaster.functionCode,
+        startAddress: providedRTUMaster?.startAddress ?? defaultRTUMaster.startAddress,
+        registerCount: providedRTUMaster?.registerCount ?? defaultRTUMaster.registerCount,
+        pollIntervalMs: providedRTUMaster?.pollIntervalMs ?? defaultRTUMaster.pollIntervalMs,
+        mapToInputStart: providedRTUMaster?.mapToInputStart ?? defaultRTUMaster.mapToInputStart,
+        mapFromOutputStart: providedRTUMaster?.mapFromOutputStart ?? defaultRTUMaster.mapFromOutputStart,
+      },
+      modbusTCP: providedCommunicationConfiguration.modbusTCP?.tcpInterface
+        ? providedCommunicationConfiguration.modbusTCP
         : defaults.communicationConfiguration.modbusTCP,
       communicationPreferences: {
         ...defaults.communicationConfiguration.communicationPreferences,
-        ...(provided.communicationConfiguration?.communicationPreferences || {}),
+        ...providedCommunicationConfiguration.communicationPreferences,
       },
     },
   }

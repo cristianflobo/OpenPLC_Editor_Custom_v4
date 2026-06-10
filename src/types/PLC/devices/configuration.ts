@@ -26,6 +26,33 @@ const deviceConfigurationSchema = z.object({
       rtuSlaveId: z.number().int().gte(0).lte(255).nullable(), // Can be any integer number from 0 to 255 - Validation will be added further.
       rtuRS485ENPin: z.string().nullable(), // Can be any integer number from 0 to 255 - Validation will be added further.
     }),
+    modbusRTUMaster: z
+      .object({
+        enabled: z.boolean().default(false),
+        rtuInterface: z.enum(interfaceOptions).default('Serial2'),
+        rtuBaudRate: z.enum(baudRateOptions).default('115200'),
+        rtuRS485ENPin: z.string().nullable().default(null),
+        slaveId: z.number().int().gte(1).lte(247).nullable(),
+        functionCode: z.enum(['3', '4', '6', '16', '3+6', '3+16', '4+6', '4+16']),
+        startAddress: z.number().int().gte(0).lte(65535),
+        registerCount: z.number().int().gte(1).lte(64),
+        pollIntervalMs: z.number().int().gte(20).lte(60000),
+        mapToInputStart: z.number().int().gte(0).lte(1023),
+        mapFromOutputStart: z.number().int().gte(0).lte(1023),
+      })
+      .default({
+        enabled: false,
+        rtuInterface: 'Serial2',
+        rtuBaudRate: '115200',
+        rtuRS485ENPin: null,
+        slaveId: null,
+        functionCode: '3',
+        startAddress: 0,
+        registerCount: 4,
+        pollIntervalMs: 100,
+        mapToInputStart: 0,
+        mapFromOutputStart: 0,
+      }),
     modbusTCP: z.discriminatedUnion('tcpInterface', [
       z.object({
         tcpInterface: z.literal('Wi-Fi'),
@@ -53,10 +80,9 @@ type DeviceConfiguration = z.infer<typeof deviceConfigurationSchema>
 export {
   baudRateOptions,
   BYTE_MAC_ADDRESS_REGEX,
-  DeviceConfiguration,
   deviceConfigurationSchema,
   interfaceOptions,
   MAC_ADDRESS_REGEX,
-  StaticHostConfiguration,
   staticHostConfigurationSchema,
 }
+export type { DeviceConfiguration, StaticHostConfiguration }
